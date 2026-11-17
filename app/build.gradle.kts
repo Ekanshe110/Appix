@@ -125,7 +125,10 @@ android {
         create("dev") {
             dimension = "env"
             applicationId = "com.dev.bitchord"
-            resValue("string", "app_name", "Auris")
+            // The dev build wears the same name as the app it is: the label
+            // is what the launcher shows, and "Auris" on a build of Appix is
+            // somebody else's name on our icon.
+            resValue("string", "app_name", "Appix")
         }
         create("prod") {
             dimension = "env"
