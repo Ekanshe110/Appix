@@ -3551,7 +3551,13 @@ private fun BitChordApp(
                 },
                 onAddToPlaylist = {
                     sheets.songMenu.song = null
-                    viewModel.loadPlaylists()
+                    // The picker lists the playlists of the catalogue the row
+                    // came from: Apple's own under the Apple source axis.
+                    if (providerAxes.source == com.music.bitchord.data.settings.MusicProvider.APPLE) {
+                        viewModel.loadApplePlaylists()
+                    } else {
+                        viewModel.loadPlaylists()
+                    }
                     sheets.playlistPick.songs = listOf(song)
                     sheets.playlistPick.title = null
                     sheets.playlistPick.artwork = null
@@ -5923,7 +5929,11 @@ private fun RootPage(
                     artworkUrl = song.thumbnailUrl,
                     entityType = EntityType.TRACK,
                 ))
-                viewModel.loadPlaylists()
+                if (providerAxes.source == com.music.bitchord.data.settings.MusicProvider.APPLE) {
+                    viewModel.loadApplePlaylists()
+                } else {
+                    viewModel.loadPlaylists()
+                }
                 sheets.playlistPick.songs = listOf(song)
                 sheets.playlistPick.title = null
                 sheets.playlistPick.artwork = null
@@ -6361,6 +6371,10 @@ private fun RootOverlays(
     val activeProfileId by viewModel.activeProfileId.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val playlistsLoading by viewModel.playlistsLoading.collectAsStateWithLifecycle()
+    // Apple's own playlists, for the "add to playlist" sheet under the Apple
+    // source axis.
+    val applePlaylists by viewModel.applePlaylists.collectAsStateWithLifecycle()
+    val applePlaylistsLoading by viewModel.applePlaylistsLoading.collectAsStateWithLifecycle()
     // ---- Album / playlist detail ----
     // ---- Long-press track actions ----
     // One body for both presentations of the track menu: the sheet the ⋮
@@ -6497,18 +6511,35 @@ private fun RootOverlays(
             sheets.playlistPick.artwork = null
             sheets.creatingPlaylist = false
         }
+        // Under the Apple source axis the picker lists the listener's own
+        // Apple Music playlists and files the rows there. A playlist of
+        // another service would be a dead end for an Apple row: it holds
+        // that service's ids, and the row has none.
+        val applePicker = providerAxes.source == com.music.bitchord.data.settings.MusicProvider.APPLE
         ModalBottomSheet(
             onDismissRequest = dismiss,
             containerColor = MaterialTheme.colorScheme.background,
         ) {
             PlaylistPickerSheet(
-                playlists = playlists,
-                loading = playlistsLoading,
+                playlists = if (applePicker) applePlaylists else playlists,
+                loading = if (applePicker) applePlaylistsLoading else playlistsLoading,
                 tracks = target,
                 collectionTitle = sheets.playlistPick.title,
                 collectionThumbnailUrl = sheets.playlistPick.artwork,
                 startCreating = target.isEmpty(),
                 onAdd = { picked ->
+                    if (applePicker) {
+                        // Apple's own playlists: the rows go in as the
+                        // catalogue ids Apple published them under.
+                        viewModel.addSongsToApplePlaylist(picked, target) { added, failed ->
+                            showQueueNotice(
+                                when {
+                                    added > 0 -> context.getString(R.string.song_added_to_playlist)
+                                    else -> context.getString(R.string.failed)
+                                },
+                            )
+                        }
+                    } else {
                     when (target.size) {
                         // One track: the ordinary row.
                         1 -> viewModel.addToPlaylists(picked, target.first()) { added, alreadyThere, failed ->
@@ -6540,6 +6571,7 @@ private fun RootOverlays(
                                 },
                             )
                         }
+                    }
                     }
                     dismiss()
                 },

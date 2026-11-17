@@ -59,6 +59,20 @@ object AppleManifestLocator {
     suspend fun isInstalled(): Boolean = baseUrl() != null
 
     /**
+     * Whether [configId] is the installed Apple Music manifest's own id.
+     *
+     * The answer is what tells the resolver that a track's id is an Apple
+     * catalogue id — and therefore that another addon may be asked for that
+     * very id, rather than for the track by name.
+     */
+    suspend fun isAppleConfig(configId: String): Boolean {
+        val base = baseUrl() ?: return false
+        val config = SourceRegistry.configs.value.firstOrNull { it.id == configId }
+            ?: return false
+        return config.baseUrl == base
+    }
+
+    /**
      * The manifest itself, for the fields that say what the addon publishes.
      */
     suspend fun manifest(): Pair<String, AddonManifest>? {

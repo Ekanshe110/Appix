@@ -304,6 +304,79 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Apple's own playlists, for the "add to playlist" sheet.
+     *
+     * The listener's own playlists, as the picker shows them. Under the Apple
+     * source axis the picker lists these and writes to these — a playlist
+     * belonging to another service would be a dead end for an Apple row.
+     */
+    private val _applePlaylists = MutableStateFlow<List<UserPlaylist>>(emptyList())
+    val applePlaylists: StateFlow<List<UserPlaylist>> = _applePlaylists.asStateFlow()
+
+    private val _applePlaylistsLoading = MutableStateFlow(false)
+    val applePlaylistsLoading: StateFlow<Boolean> = _applePlaylistsLoading.asStateFlow()
+
+    /** Reads Apple's playlists for the picker. */
+    fun loadApplePlaylists() {
+        if (_applePlaylistsLoading.value) return
+        _applePlaylistsLoading.value = true
+        viewModelScope.launch {
+            val handle = com.music.bitchord.data.apple.AppleSources.handle()
+            val rows = if (handle == null) {
+                emptyList()
+            } else {
+                com.music.bitchord.data.apple.AppleSources.library(handle, "playlists")
+                    .getOrDefault(emptyList())
+                    .map { item ->
+                        UserPlaylist(
+                            playlistId = item.id,
+                            title = item.title,
+                            subtitle = item.artist.ifBlank { item.album },
+                            thumbnailUrl = item.artworkURL,
+                        )
+                    }
+            }
+            _applePlaylists.value = rows
+            _applePlaylistsLoading.value = false
+        }
+    }
+
+    /**
+     * Files songs in one Apple Music playlist.
+     *
+     * Only the songs that are Apple's own rows can be filed: an Apple
+     * playlist holds Apple catalogue ids, and a row from another catalogue
+     * has none. The callback says how many went in and how many could not,
+     * the same way the other path does.
+     */
+    fun addSongsToApplePlaylist(
+        playlistId: String,
+        songs: List<Song>,
+        onResult: (added: Int, failed: Int) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val handle = com.music.bitchord.data.apple.AppleSources.handle()
+            if (handle == null) {
+                onResult(0, songs.size)
+                return@launch
+            }
+            val ids = songs.mapNotNull { song ->
+                val parsed = com.music.bitchord.data.sources.SourceRegistry.parseTrackKey(song.videoId)
+                if (parsed != null && parsed.first == handle.configId) parsed.second else null
+            }
+            if (ids.isEmpty()) {
+                onResult(0, songs.size)
+                return@launch
+            }
+            val written = com.music.bitchord.data.apple.AppleCatalogue
+                .addToPlaylist(handle.baseUrl, playlistId, ids)
+                .isSuccess
+            if (written) onResult(ids.size, songs.size - ids.size)
+            else onResult(0, songs.size)
+        }
+    }
+
+    /**
      * Apple's own stations, for the Radio page under Apple's look.
      * Apple's radio is its stations: the live ones Apple's player holds
      * under Widevine, and the seeded ones it builds from an artist, a genre

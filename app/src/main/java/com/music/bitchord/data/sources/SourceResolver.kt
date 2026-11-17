@@ -241,6 +241,25 @@ object SourceResolver {
                 ?.let { return it.copy(sourceConfigId = pinned.configId) }
         }
 
+        // The track's own source could not serve it. When the track came from
+        // Apple's catalogue, its id *is* an Apple catalogue id — and another
+        // addon may well hold that id, because addons that serve Apple music
+        // are addressed by exactly this id.
+        //
+        // So the other sources are asked for the very id before they are
+        // asked to find the track by name. The id answer is the recording
+        // itself rather than a search that might land on a different
+        // recording of the same song, which is the whole point of carrying
+        // the catalogue id at all.
+        if (com.music.bitchord.data.apple.AppleManifestLocator.isAppleConfig(configId)) {
+            for (source in active.filterNot { it.configId == configId }
+                .filter { it.servesAudio && it.kind == SourceKind.ADDON }) {
+                val stream = attempt(source) { source.stream(trackId, request) } ?: continue
+                TrackLog.d(TAG, "apple id: '${target.title}' served by ${source.displayName}")
+                return stream.copy(sourceConfigId = source.configId)
+            }
+        }
+
         // Last resort. A track whose own source is down is still a track the
         // user asked for, and another source having it is not unlikely — this
         // is the difference between a dead server skipping the queue forward
