@@ -27,8 +27,15 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class SflxSearchMemoTest {
 
-    /** A clock the test moves by hand. */
-    private class Clock(var now: Long = 1_000L) {
+    /**
+     * A clock the test moves by hand.
+     *
+     * The memo reads the clock from whichever thread answers the question,
+     * so the reading must see the test's own moves — without that, the
+     * timestamp it writes can be an older one, and the answer looks stale
+     * before its time.
+     */
+    private class Clock(@Volatile var now: Long = 1_000L) {
         fun advance(ms: Long) { now += ms }
         fun read(): Long = now
     }
