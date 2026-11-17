@@ -35,6 +35,7 @@ import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.HomeProvider
 import com.music.bitchord.data.settings.MusicProvider
 import com.music.bitchord.data.apple.song
+import com.music.bitchord.data.apple.shelfItem
 import com.music.bitchord.data.spotify.SpotifyHomeSource
 import com.music.bitchord.data.settings.withoutBlockedArtists
 import com.music.bitchord.data.settings.withoutBlockedRecommendations
@@ -267,8 +268,43 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val explore: StateFlow<UiState<List<MoodGenreSection>>> = _explore.asStateFlow()
 
     /**
-     * Apple's own stations, for the Radio page under Apple's look.
+     * Apple's own library — its playlists — for the Library page under
+     * Apple's look.
      *
+     * Apple's library is the listener's own: their playlists, their albums,
+     * their songs. Under Apple's look the page shows Apple's playlists and
+     * nothing else, because a page that mixed YouTube's library into
+     * Apple's is not Apple's page and not YouTube's either.
+     */
+    private val _appleLibrary = MutableStateFlow<UiState<List<ShelfItem>>>(UiState.Loading)
+    val appleLibrary: StateFlow<UiState<List<ShelfItem>>> = _appleLibrary.asStateFlow()
+
+    /** Reads Apple's playlists. */
+    fun loadAppleLibrary() {
+        _appleLibrary.value = UiState.Loading
+        viewModelScope.launch {
+            val handle = com.music.bitchord.data.apple.AppleSources.handle()
+            if (handle == null) {
+                _appleLibrary.value = UiState.Error(text(R.string.provider_apple_manifest_missing_subtitle))
+                return@launch
+            }
+            com.music.bitchord.data.apple.AppleSources.library(handle, "playlists")
+                .onSuccess { items ->
+                    val rows = items.mapNotNull { it.shelfItem(handle.configId) }
+                    _appleLibrary.value = if (rows.isEmpty()) {
+                        UiState.Error(text(R.string.apple_library_empty))
+                    } else {
+                        UiState.Success(rows)
+                    }
+                }
+                .onFailure { failure ->
+                    _appleLibrary.value = UiState.Error(failure.friendly())
+                }
+        }
+    }
+
+    /**
+     * Apple's own stations, for the Radio page under Apple's look.
      * Apple's radio is its stations: the live ones Apple's player holds
      * under Widevine, and the seeded ones it builds from an artist, a genre
      * or a song. No Flow and no "search a station" — neither is Apple's, and
@@ -2244,6 +2280,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Call when the library tab becomes visible. */
     fun onLibraryShown() {
+        // Under Apple's look the page is Apple's library: the listener's own
+        // playlists, read through the installed manifest.
+        if (AppSettings.providerAxes.value.ui == MusicProvider.APPLE) {
+            loadAppleLibrary()
+            return
+        }
         loadPlaylists()
         if (!libraryStale) return
         libraryStale = false
@@ -2446,7 +2488,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 } else {
                     fetchExplore()
                 }
-                Feed.LIBRARY -> fetchLibrary(identity)
+                Feed.LIBRARY -> if (AppSettings.providerAxes.value.ui == MusicProvider.APPLE) {
+                    loadAppleLibrary()
+                } else {
+                    fetchLibrary(identity)
+                }
                 Feed.PODCASTS -> {
                     fetchPodcasts()
                     ensurePodcastSectionsFetched(force = true)

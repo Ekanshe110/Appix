@@ -348,6 +348,7 @@ import com.music.bitchord.ui.screens.ExploreScreen
 import com.music.bitchord.ui.screens.PodcastsScreen
 import com.music.bitchord.ui.screens.LocalMusicScreen
 import com.music.bitchord.ui.screens.AppleHomeScreen
+import com.music.bitchord.ui.screens.AppleLibraryScreen
 import com.music.bitchord.ui.screens.AppleRadioScreen
 import com.music.bitchord.ui.screens.HomeScreen
 import com.music.bitchord.ui.screens.LibraryGridPage
@@ -4894,6 +4895,8 @@ private fun RootPage(
     val exploreState by viewModel.explore.collectAsStateWithLifecycle()
     // Apple's own stations, for the Radio page under Apple's look.
     val appleRadioState by viewModel.appleRadio.collectAsStateWithLifecycle()
+    // Apple's own library, for the Library page under Apple's look.
+    val appleLibraryState by viewModel.appleLibrary.collectAsStateWithLifecycle()
     val podcastsState by viewModel.podcasts.collectAsStateWithLifecycle()
     val podcastSections by viewModel.podcastSections.collectAsStateWithLifecycle()
     val itunesSearchQuery by viewModel.itunesSearchQuery.collectAsStateWithLifecycle()
@@ -6046,7 +6049,33 @@ private fun RootPage(
                 )
             },
         )
-        else -> LibraryScreen(
+        else -> if (appleUi) {
+            // Apple's library: the listener's own playlists, and nothing
+            // else. Another service's library under Apple's heading is not
+            // Apple's library.
+            AppleLibraryScreen(
+                state = appleLibraryState,
+                listState = scroll.library,
+                onItemClick = { item ->
+                    val browseId = item.browseId
+                    if (browseId != null) {
+                        viewModel.openDetail(
+                            browseId = browseId,
+                            title = item.title,
+                            subtitle = item.subtitle,
+                            thumbnailUrl = item.thumbnailUrl,
+                        )
+                    }
+                },
+                onRetry = viewModel::loadAppleLibrary,
+                refreshing = MainViewModel.Feed.LIBRARY in refreshing,
+                onRefresh = { viewModel.refresh(MainViewModel.Feed.LIBRARY) },
+                pullState = scroll.libraryPull,
+                contentPadding = listPadding,
+                title = stringResource(R.string.library),
+            )
+        } else {
+        LibraryScreen(
             signedIn = signedIn,
             state = libraryState,
             listState = scroll.library,
@@ -6102,6 +6131,7 @@ private fun RootPage(
                 }
             },
         )
+        }
     }
 }
 
