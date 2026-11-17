@@ -2507,15 +2507,12 @@ private fun BitChordApp(
         },
         searchSource = searchSource,
         onToggleSource = {
-            // Three sources, so the button cycles: YouTube, Spotify, the
-            // device's own folder, and round again.
-            onSearchSourceChange(
-                when (searchSource) {
-                    SearchSource.YOUTUBE -> SearchSource.SPOTIFY
-                    SearchSource.SPOTIFY -> SearchSource.LIBRARY
-                    SearchSource.LIBRARY -> SearchSource.YOUTUBE
-                },
-            )
+            // The button cycles the sources in the order they are offered:
+            // the chosen catalogue first, then the others, with the device's
+            // own folder last — see [SearchSource.ordered].
+            val ordered = SearchSource.ordered(searchSource)
+            val next = ordered[(ordered.indexOf(searchSource) + 1) % ordered.size]
+            onSearchSourceChange(next)
         },
         onTapSearchIcon = {
             if (nav.selectedTab != TAB_SEARCH) nav.lastSearchTab = nav.selectedTab
@@ -5788,6 +5785,12 @@ private fun RootPage(
                         it != com.music.bitchord.data.model.SearchFilter.VIDEOS &&
                             it != com.music.bitchord.data.model.SearchFilter.PODCASTS
                     }
+                // Apple's catalogue has no videos either, and no shows.
+                searchSource == SearchSource.APPLE ->
+                    com.music.bitchord.data.model.SearchFilter.entries.filter {
+                        it != com.music.bitchord.data.model.SearchFilter.VIDEOS &&
+                            it != com.music.bitchord.data.model.SearchFilter.PODCASTS
+                    }
                 podcastsEnabled -> com.music.bitchord.data.model.SearchFilter.entries
                 else -> com.music.bitchord.data.model.SearchFilter.entries
                     .filter { it != com.music.bitchord.data.model.SearchFilter.PODCASTS }
@@ -5925,14 +5928,22 @@ private fun RootPage(
             // The settings page's own two-state selector, so the
             // app has one look for "pick one of these".
             sourceSwitcher = {
+                // The catalogue the source axis points at comes first, and the
+                // device's own library comes last — see [SearchSource.ordered].
+                val ordered = SearchSource.ordered(searchSource)
                 SegmentedControl(
-                    options = listOf(
-                        stringResource(R.string.search_source_youtube),
-                        stringResource(R.string.search_source_spotify),
-                        stringResource(R.string.library),
-                    ),
-                    selectedIndex = searchSource.ordinal,
-                    onSelect = { index -> pageActions.onSearchSourceChange(SearchSource.entries[index]) },
+                    options = ordered.map { source ->
+                        stringResource(
+                            when (source) {
+                                SearchSource.YOUTUBE -> R.string.search_source_youtube
+                                SearchSource.SPOTIFY -> R.string.search_source_spotify
+                                SearchSource.APPLE -> R.string.provider_apple
+                                SearchSource.LIBRARY -> R.string.library
+                            },
+                        )
+                    },
+                    selectedIndex = ordered.indexOf(searchSource).coerceAtLeast(0),
+                    onSelect = { index -> pageActions.onSearchSourceChange(ordered[index]) },
                 )
             },
             searchingLibrary = searchSource == SearchSource.LIBRARY,

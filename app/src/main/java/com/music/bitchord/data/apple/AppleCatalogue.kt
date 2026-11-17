@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
@@ -376,7 +377,7 @@ object AppleCatalogue {
             }
             val request = Request.Builder()
                 .url(endpoint(baseUrl, segments, emptyMap()))
-                .post(body.toRequestBody(mediaType = "application/x-www-form-urlencoded"))
+                .post(body.toRequestBody("application/x-www-form-urlencoded".toMediaType()))
                 .build()
             http.newCall(request).execute().use { response ->
                 val text = response.body?.string().orEmpty()
@@ -399,7 +400,7 @@ object AppleCatalogue {
             }
             val request = Request.Builder()
                 .url(endpoint(baseUrl, segments, emptyMap()))
-                .delete(body.toRequestBody(mediaType = "application/x-www-form-urlencoded"))
+                .delete(body.toRequestBody("application/x-www-form-urlencoded".toMediaType()))
                 .build()
             http.newCall(request).execute().use { response ->
                 val text = response.body?.string().orEmpty()

@@ -1,0 +1,220 @@
+package com.music.bitchord.data.apple
+
+import com.music.bitchord.data.model.BrowseItem
+import com.music.bitchord.data.model.BrowseType
+import com.music.bitchord.data.model.HomeShelf
+import com.music.bitchord.data.model.SearchResult
+import com.music.bitchord.data.model.ShelfItem
+import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.sources.SourceRegistry
+import com.music.bitchord.data.sources.addon.AddonManifest
+
+/**
+ * The Apple Music catalogue, as the app's own rows.
+ *
+ * [AppleCatalogue] speaks the addon's wire; this speaks the app's. A song
+ * read from Apple becomes a [Song] whose id is packed for the addon that
+ * holds the account, so pressing play asks that addon for the audio by the
+ * very catalogue id it published — no search, no guessing.
+ *
+ * The rows carry Apple's own metadata whatever serves the audio later. That
+ * is what the *source* axis means: Apple's spelling of a song, Apple's
+ * cover, Apple's catalogue id. Where the bytes come from is a separate
+ * question, and [SourceResolver] asks it separately.
+ */
+internal object AppleSources {
+
+    /** A library playlist, opened as a page of its own. */
+    const val PAGE_PREFIX = "apple:page:"
+
+    /** An album, opened as a page of its own. */
+    const val ALBUM_PREFIX = "apple:album:"
+
+    /** An artist, opened as a page of its own. */
+    const val ARTIST_PREFIX = "apple:artist:"
+
+    /** A radio station, opened as a page of its own. */
+    const val STATION_PREFIX = "apple:station:"
+
+    /**
+     * The installed Apple Music manifest, as the two things the app needs
+     * from it: where to ask, and which source its ids belong to.
+     */
+    data class Handle(
+        /** The addon's own id in the source registry. */
+        val configId: String,
+        /** Where the addon lives. */
+        val baseUrl: String,
+        /** What the manifest says it publishes. */
+        val manifest: AddonManifest,
+    )
+
+    /** The installed Apple Music manifest, or null when there is none. */
+    suspend fun handle(): Handle? {
+        val baseUrl = AppleManifestLocator.baseUrl() ?: return null
+        val config = SourceRegistry.configs.value.firstOrNull { it.baseUrl == baseUrl } ?: return null
+        val manifest = AppleManifestLocator.manifest()?.second ?: return null
+        return Handle(configId = config.id, baseUrl = baseUrl, manifest = manifest)
+    }
+
+    /**
+     * Apple's home, as the shelves this app draws.
+     *
+     * Apple's own order is kept. It is the order Apple's app draws, and the
+     * order it draws it in is a large part of what it looks like.
+     */
+    suspend fun home(handle: Handle): Result<List<HomeShelf>> =
+        AppleCatalogue.home(handle.baseUrl).map { home ->
+            home.shelves.mapNotNull { shelf ->
+                val items = shelf.items.mapNotNull { item -> item.shelfItem(handle.configId) }
+                if (items.isEmpty()) null
+                else HomeShelf(title = shelf.title, subtitle = shelf.subtitle, items = items)
+            }
+        }
+
+    /**
+     * One library collection — playlists, albums or songs — as rows.
+     */
+    suspend fun library(
+        handle: Handle,
+        collection: String,
+        offset: Int = 0,
+        limit: Int = 50,
+    ): Result<List<AppleItem>> =
+        AppleCatalogue.library(handle.baseUrl, collection, offset, limit).map { it.tracks }
+
+    /**
+     * The tracks of one library collection.
+     */
+    suspend fun libraryTracks(
+        handle: Handle,
+        collection: String,
+        collectionId: String,
+    ): Result<List<AppleItem>> =
+        AppleCatalogue.libraryTracks(handle.baseUrl, collection, collectionId).map { it.tracks }
+
+    /**
+     * Apple's album, playlist or artist page, as rows.
+     */
+    suspend fun catalogTracks(
+        handle: Handle,
+        kind: String,
+        id: String,
+    ): Result<List<AppleItem>> =
+        AppleCatalogue.catalogTracks(handle.baseUrl, kind, id)
+
+    /**
+     * Apple's own search, as this app's rows.
+     *
+     * Apple's songs are playable rows: the id published is the id the
+     * addon streams. Apple's albums, playlists and artists are pages.
+     */
+    suspend fun search(
+        handle: Handle,
+        query: String,
+        types: String = "songs,albums,playlists,artists",
+        limit: Int = 25,
+    ): Result<List<SearchResult>> =
+        AppleCatalogue.search(handle.baseUrl, query, types, limit).map { response ->
+            buildList {
+                response.tracks.forEach { item ->
+                    add(SearchResult.Track(item.song(handle.configId)))
+                }
+                response.albums.forEach { item ->
+                    add(SearchResult.Browse(item.browseItem()))
+                }
+                response.playlists.forEach { item ->
+                    add(SearchResult.Browse(item.browseItem()))
+                }
+                response.artists.forEach { item ->
+                    add(SearchResult.Browse(item.browseItem()))
+                }
+            }
+        }
+
+    /**
+     * Apple's stations: the listener's own, and the ones Apple builds.
+     */
+    suspend fun stations(handle: Handle): Result<List<AppleStation>> =
+        AppleCatalogue.stations(handle.baseUrl)
+
+    /** Apple's live stations — continuous streams rather than song queues. */
+    suspend fun liveStations(handle: Handle): Result<List<AppleStation>> =
+        AppleCatalogue.liveStations(handle.baseUrl)
+
+    /** Apple's station search. */
+    suspend fun searchStations(
+        handle: Handle,
+        query: String,
+    ): Result<List<AppleStation>> =
+        AppleCatalogue.searchStations(handle.baseUrl, query)
+
+    /** The tracks of one station — what plays after the seed. */
+    suspend fun stationTracks(
+        handle: Handle,
+        stationId: String,
+    ): Result<List<AppleItem>> =
+        AppleCatalogue.stationTracks(handle.baseUrl, stationId)
+
+    // ── Rows ──────────────────────────────────────────────────────────────
+}
+
+/** The song as this app's player knows it. */
+internal fun AppleItem.song(configId: String): Song = Song(
+    videoId = SourceRegistry.trackKey(configId, id),
+    title = title,
+    artist = artist,
+    thumbnailUrl = artworkURL,
+    durationText = durationMs.takeIf { it > 0 }?.let(::durationText),
+    albumName = album.takeIf { it.isNotBlank() },
+)
+
+/** The card this app draws for the row. */
+internal fun AppleItem.shelfItem(configId: String): ShelfItem? {
+    if (title.isBlank()) return null
+    return when (type.lowercase()) {
+        "song" -> ShelfItem(
+            title = title,
+            subtitle = artist,
+            thumbnailUrl = artworkURL,
+            videoId = SourceRegistry.trackKey(configId, id),
+            browseId = null,
+        )
+        else -> ShelfItem(
+            title = title,
+            subtitle = artist.ifBlank { album },
+            thumbnailUrl = artworkURL,
+            videoId = null,
+            browseId = browseIdOf(),
+        )
+    }
+}
+
+/** The page this row opens, when it is a page and not a track. */
+internal fun AppleItem.browseIdOf(): String? = when (type.lowercase()) {
+    "album" -> AppleSources.ALBUM_PREFIX + id
+    "playlist" -> AppleSources.PAGE_PREFIX + id
+    "artist" -> AppleSources.ARTIST_PREFIX + id
+    "station" -> AppleSources.STATION_PREFIX + id
+    else -> null
+}
+
+/** The page this row opens, as the model the detail stack holds. */
+internal fun AppleItem.browseItem(): BrowseItem = BrowseItem(
+    browseId = browseIdOf() ?: "",
+    title = title,
+    subtitle = artist.ifBlank { album },
+    thumbnailUrl = artworkURL,
+    type = when (type.lowercase()) {
+        "album" -> BrowseType.ALBUM
+        "playlist" -> BrowseType.PLAYLIST
+        "artist" -> BrowseType.ARTIST
+        else -> BrowseType.OTHER
+    },
+)
+
+/** A runtime as a display string, the way the rows show it. */
+internal fun durationText(ms: Long): String {
+    val total = ms / 1000
+    return "%d:%02d".format(total / 60, total % 60)
+}

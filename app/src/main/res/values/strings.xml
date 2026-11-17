@@ -166,6 +166,7 @@
     <string name="provider_apple_subtitle">Apple Music\'s own catalogue, discovery and library, read through an installed Apple Music manifest.</string>
     <string name="provider_apple_manifest_missing_title">No Apple Music manifest installed</string>
     <string name="provider_apple_manifest_missing_subtitle">Install an Apple Music manifest on the Sources screen. Until one is installed, Apple cannot answer anything.</string>
+    <string name="apple_home_empty">Apple Music returned nothing to show</string>
     <string name="account_scrobbling">Account &amp; scrobbling</string>
     <string name="rich_presence">Rich presence</string>
     <string name="scrobbling">Scrobbling</string>
