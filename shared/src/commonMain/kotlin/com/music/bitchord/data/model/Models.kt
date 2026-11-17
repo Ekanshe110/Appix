@@ -347,6 +347,8 @@ enum class PlaybackSourceType {
     BROWSE,
     SHARED_LINK,
     QUEUE,
+    /** A radio station — Apple's own, or any other catalogue's. */
+    RADIO,
 }
 
 /** A non-track search result: album, artist or playlist. */
