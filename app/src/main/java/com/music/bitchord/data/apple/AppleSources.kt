@@ -166,8 +166,13 @@ internal fun AppleItem.song(configId: String): Song = Song(
     title = title,
     artist = artist,
     thumbnailUrl = artworkURL,
-    durationText = durationMs.takeIf { it > 0 }?.let(::durationText),
+    durationText = runtimeMs.takeIf { it > 0 }?.let(::durationText),
     albumName = album.takeIf { it.isNotBlank() },
+    // What the player needs to know to offer the rendition switch: whether
+    // Apple holds an Atmos mix of this recording, and whether it holds a
+    // Hi-Res master.
+    atmosAvailable = hasAtmos,
+    hiResAvailable = hasHiRes,
 )
 
 /** The card this app draws for the row. */

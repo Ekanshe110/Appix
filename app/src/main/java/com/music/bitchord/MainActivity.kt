@@ -245,6 +245,7 @@ import com.music.bitchord.playback.UpgradeOutcome
 import com.music.bitchord.playback.upgradeQuality
 import com.music.bitchord.playback.revertToOriginal
 import com.music.bitchord.playback.swapToVersion
+import com.music.bitchord.playback.switchRendition
 import com.music.bitchord.playback.smart.VersionAudioAligner
 import com.music.bitchord.download.DownloadSession
 import com.music.bitchord.download.DownloadStore
@@ -326,6 +327,7 @@ import com.music.bitchord.ui.icons.BitChordIcons
 import androidx.media3.common.Player
 import com.music.bitchord.data.YtMusicRepository
 import com.music.bitchord.ui.player.HardwareVolume
+import com.music.bitchord.ui.player.LocalRenditionSwitch
 import com.music.bitchord.ui.player.ListenTogetherMembersSheet
 import com.music.bitchord.ui.player.NowPlayingScreen
 import com.music.bitchord.ui.player.PlayerPlatform
@@ -2867,6 +2869,15 @@ private fun BitChordApp(
         // the one flag, because the route list changes far less often than the
         // player redraws.
         val castState by CastController.state.collectAsStateWithLifecycle()
+        // The quality badge's switch. Provided here rather than inside the
+        // shared player UI, because the switch itself is a session command and
+        // the service is the app's own — the shared UI only knows that some
+        // host can be asked.
+        CompositionLocalProvider(
+            LocalRenditionSwitch provides { rendition ->
+                controller?.switchRendition(rendition)
+            },
+        ) {
         NowPlayingScreen(
             song = displayedSong,
             playedBy = playedBy,
@@ -3153,6 +3164,7 @@ private fun BitChordApp(
                 }
             },
         )
+        }
     }
 
     AppRootBox {

@@ -143,6 +143,23 @@ data class Song(    val videoId: String,
      * from an artist name, title or genre.
      */
     val genAi: GenAiDisclosure = GenAiDisclosure.NONE,
+    /**
+     * Whether this recording has a Dolby Atmos mix in the catalogue.
+     *
+     * Carried on the row because the player needs to know whether the
+     * "switch to Atmos" cue belongs on this track at all, and that can only be
+     * answered by the catalogue the row came from — the audio flavour is a
+     * property of the master, not of the device playing it.
+     */
+    val atmosAvailable: Boolean = false,
+    /**
+     * Whether this recording has a Hi-Res lossless master (96/192 kHz).
+     *
+     * The ordinary lossless rung is 44.1/48 kHz; the Hi-Res rung is the same
+     * recording at a higher sample rate, and only some masters have one. A
+     * row that says nothing is asked for the standard rung.
+     */
+    val hiResAvailable: Boolean = false,
 ) {
     /** Legacy derived property: true if and only if [queueTier] is [QueueTier.AUTOPLAY]. */
     val fromAutoplay: Boolean get() = queueTier == QueueTier.AUTOPLAY
@@ -173,6 +190,8 @@ data class Song(    val videoId: String,
         playbackSource: String? = null,
         playbackSourceType: PlaybackSourceType? = null,
         playbackSourceId: String? = null,
+        atmosAvailable: Boolean = false,
+        hiResAvailable: Boolean = false,
     ) : this(
         videoId = videoId,
         title = title,
@@ -199,6 +218,8 @@ data class Song(    val videoId: String,
         playbackSource = playbackSource,
         playbackSourceType = playbackSourceType,
         playbackSourceId = playbackSourceId,
+        atmosAvailable = atmosAvailable,
+        hiResAvailable = hiResAvailable,
     )
 }
 

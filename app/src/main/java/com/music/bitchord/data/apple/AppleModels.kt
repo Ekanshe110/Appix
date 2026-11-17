@@ -39,10 +39,52 @@ data class AppleItem(
     @SerialName("album") val album: String = "",
     @SerialName("artworkURL") val artworkURL: String? = null,
     @SerialName("durationMs") val durationMs: Long = 0,
+    /**
+     * The runtime in seconds, as the addon publishes it.
+     *
+     * Two shapes reach this app — the addons that publish milliseconds and
+     * the ones that publish seconds — and only one of them can be the
+     * declared field. Read both, and prefer the declared one.
+     */
+    @SerialName("duration") val durationSeconds: Double? = null,
     @SerialName("isrc") val isrc: String? = null,
     @SerialName("hasDrm") val hasDrm: Boolean? = null,
     @SerialName("url") val url: String? = null,
-)
+    /**
+     * Whether Apple holds a Dolby Atmos mix of this recording.
+     *
+     * The player's switch needs to know before the stream is opened, because
+     * the cue it draws depends on whether there is another rendition to ask
+     * for.
+     */
+    @SerialName("atmos") val atmos: Boolean? = null,
+    /**
+     * The addon's own word for the audio flavour — `LOSSLESS`,
+     * `HI-RES LOSSLESS` or `AAC`.
+     */
+    @SerialName("audioQuality") val audioQuality: String? = null,
+    /** The audio mode — `DOLBY_ATMOS` or `STEREO`. */
+    @SerialName("audioMode") val audioMode: String? = null,
+) {
+    /** The runtime in milliseconds, whichever shape the addon published. */
+    val runtimeMs: Long
+        get() = when {
+            durationMs > 0 -> durationMs
+            durationSeconds != null && durationSeconds > 0 -> (durationSeconds * 1000).toLong()
+            else -> 0L
+        }
+
+    /** Whether this recording has a Dolby Atmos mix. */
+    val hasAtmos: Boolean
+        get() = atmos == true ||
+            audioMode?.contains("atmos", ignoreCase = true) == true ||
+            audioQuality?.contains("atmos", ignoreCase = true) == true
+
+    /** Whether this recording has a Hi-Res lossless master (96/192 kHz). */
+    val hasHiRes: Boolean
+        get() = audioQuality?.contains("hi-res", ignoreCase = true) == true ||
+            audioQuality?.contains("hires", ignoreCase = true) == true
+}
 
 /** The addon's Apple home page: a list of shelves, in Apple's own order. */
 @Serializable

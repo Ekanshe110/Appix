@@ -246,7 +246,28 @@ data class AddonTrack(
         get() = atmos == true || ATMOS_HINT.containsMatchIn(
             "$audioQuality ${audioMode.orEmpty()} ${audioModes.joinToString(" ")} $format",
         )
+
+    /**
+     * Whether this row is a Hi-Res lossless master — 96/192 kHz rather than
+     * 44.1/48 kHz.
+     *
+     * Read from the free-text quality label, because that is where the
+     * catalogues put it: `HI-RES LOSSLESS`, `hires`, `24-bit` and `96kHz` all
+     * mean the same thing to the player.
+     */
+    val isHiResLossless: Boolean
+        get() = HI_RES_HINT.containsMatchIn(
+            "$audioQuality ${audioMode.orEmpty()} ${audioModes.joinToString(" ")} $format",
+        )
 }
+
+/**
+ * The spellings an addon uses for a Hi-Res lossless master.
+ */
+private val HI_RES_HINT = Regex(
+    """hi[-_ ]?res|hires|24[- ]?bit|\b96\s?k|\b192\s?k""",
+    RegexOption.IGNORE_CASE,
+)
 
 /**
  * The spellings an addon uses for an immersive mix, in any free-text field.

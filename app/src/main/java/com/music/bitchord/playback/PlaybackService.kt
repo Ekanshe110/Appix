@@ -226,6 +226,14 @@ const val ACTION_COMMIT_RADIO_QUEUE = "com.music.bitchord.action.COMMIT_RADIO_QU
 const val ACTION_UPGRADE_QUALITY = "com.music.bitchord.action.UPGRADE_QUALITY"
 
 /**
+ * Session command behind the quality badge's switch cue.
+ *
+ * Carries the rendition to open at — `atmos`, `hires` or `lossless` — in
+ * [EXTRA_RENDITION].
+ */
+const val ACTION_SWITCH_RENDITION = "com.music.bitchord.action.SWITCH_RENDITION"
+
+/**
  * App-side gate for explicit quality retries.
  *
  * Automatic upgrades never pass through this object. Returning the remaining
@@ -840,6 +848,7 @@ class PlaybackService : MediaLibraryService() {
     private val beginRadioQueueCommand = SessionCommand(ACTION_BEGIN_RADIO_QUEUE, Bundle.EMPTY)
     private val commitRadioQueueCommand = SessionCommand(ACTION_COMMIT_RADIO_QUEUE, Bundle.EMPTY)
     private val upgradeQualityCommand = SessionCommand(ACTION_UPGRADE_QUALITY, Bundle.EMPTY)
+    private val switchRenditionCommand = SessionCommand(ACTION_SWITCH_RENDITION, Bundle.EMPTY)
     private val swapVersionCommand = SessionCommand(ACTION_SWAP_VERSION, Bundle.EMPTY)
     private val reorderQueueCommand = SessionCommand(ACTION_REORDER_QUEUE, Bundle.EMPTY)
     private val queueDragCommand = SessionCommand(ACTION_QUEUE_DRAG, Bundle.EMPTY)
@@ -5053,6 +5062,15 @@ class PlaybackService : MediaLibraryService() {
     private var upgradeFadeActive = false
 
     /**
+     * True while a rendition switch is in flight.
+     *
+     * The switch re-opens the current item at another rendition, and two of
+     * them at once would fight over the same slot — the second one reading a
+     * position the first has already moved past.
+     */
+    private var renditionSwitchInFlight = false
+
+    /**
      * The shift the upgrade fade measured between the playing copy and the
      * incoming one — target position = source position + this.
      *
@@ -5275,6 +5293,74 @@ class PlaybackService : MediaLibraryService() {
         TrackLog.d("BitChord", "upgrade asked for by hand for $mediaId", about = mediaId)
         lookForBetterCopy(player, byHand = true)
         return UpgradeOutcome.STARTED
+    }
+
+    /**
+     * Re-opens the playing track in another rendition, at the same position.
+     *
+     * The choice rides on the item's URI so preparation, the resolver and the
+     * disk cache all agree on which file this is. No global setting changes,
+     * and the next track keeps the listener's rung.
+     *
+     * @param rendition one of `atmos`, `hires` or `lossless`.
+     */
+    private fun switchCurrentRendition(rendition: String) {
+        if (renditionSwitchInFlight) return
+        val active = player ?: return
+        // The standby pair is shared with the quality fade and version swaps.
+        if (upgradeFadeActive || versionSwapJob?.isActive == true) return
+        if (crossfade?.isTransitioning() == true) return
+        val item = active.currentMediaItem ?: return
+        val uri = item.localConfiguration?.uri ?: return
+        val target = when (rendition) {
+            "atmos", "hires", "lossless" -> rendition
+            else -> return
+        }
+        if (uri.getQueryParameter("rend") == target) return
+        // Uri.Builder has no remove; replace the whole query with every
+        // parameter except the old rendition, then the new one.
+        val kept = uri.encodedQuery.orEmpty()
+            .split('&')
+            .filterNot { it.substringBefore('=') == "rend" }
+        val switchedUri = uri.buildUpon()
+            .encodedQuery((kept + "rend=$target").joinToString("&"))
+            .build()
+        val switched = item.buildUpon().setUri(switchedUri).build()
+        val mediaId = item.mediaId
+        // Both pins are keyed by media id and outlive a rendition change. Left
+        // alone they would hand the new item the old mix's URL.
+        StreamChoice.forget(mediaId)
+        QualityUpgrade.forget(mediaId, keepHandAsk = true)
+        renditionSwitchInFlight = true
+        scope.launch(Dispatchers.Main) {
+            try {
+                val now = swapPointFor(mediaId)
+                if (now == null) {
+                    swapRenditionDirect(switched)
+                    return@launch
+                }
+                when (crossfadeUpgradeIn(mediaId, now, switched, switchedUri.toString())) {
+                    UpgradeSwap.Crossfaded, UpgradeSwap.Abandoned, UpgradeSwap.Failed -> Unit
+                    UpgradeSwap.Fallback -> swapRenditionDirect(switched)
+                }
+            } finally {
+                renditionSwitchInFlight = false
+            }
+        }
+    }
+
+    /** The direct half of [switchCurrentRendition]: same position, no fade. */
+    private fun swapRenditionDirect(item: MediaItem) {
+        val active = player ?: return
+        val index = active.currentMediaItemIndex
+        if (index !in 0 until active.mediaItemCount) return
+        if (active.currentMediaItem?.mediaId != item.mediaId) return
+        val at = active.currentPosition
+        swappingMediaId = item.mediaId
+        swapCutAt = SystemClock.elapsedRealtime()
+        active.replaceMediaItem(index, item)
+        active.seekTo(index, at)
+        active.prepare()
     }
 
     /**
@@ -9803,6 +9889,7 @@ class PlaybackService : MediaLibraryService() {
                 .add(beginRadioQueueCommand)
                 .add(commitRadioQueueCommand)
                 .add(upgradeQualityCommand)
+                .add(switchRenditionCommand)
                 .add(swapVersionCommand)
                 .add(reorderQueueCommand)
                 .add(queueDragCommand)
@@ -9853,6 +9940,10 @@ class PlaybackService : MediaLibraryService() {
                         val targetSong = songFromBundle(bundle)
                         smoothSwapCurrentTrackVersion(targetSong.toMediaItem())
                     }
+                }
+                ACTION_SWITCH_RENDITION -> {
+                    val rendition = args.getString(EXTRA_RENDITION).orEmpty()
+                    switchCurrentRendition(rendition)
                 }
                 ACTION_REORDER_QUEUE -> player?.let { QueueShuffle.reorderFromCommand(it, args) }
                 ACTION_QUEUE_DRAG -> {

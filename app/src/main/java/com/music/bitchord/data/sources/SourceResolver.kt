@@ -44,6 +44,16 @@ object SourceResolver {
     private const val TAG = "BitChord"
 
     /**
+     * The query parameter that names the rendition a track is opened at.
+     *
+     * `atmos`, `hires` or `lossless`. It rides on the item's URI rather than
+     * in a setting, because the choice is per track and has to survive the
+     * hand-over to the service — see
+     * [PlaybackService.switchCurrentRendition][com.music.bitchord.playback.PlaybackService].
+     */
+    private const val RENDITION_PARAM = "rend"
+
+    /**
      * What to ask a source for, right now.
      *
      * The lossless switch is a preference, not an override — it loses to the
@@ -156,10 +166,20 @@ object SourceResolver {
     suspend fun resolve(uri: Uri): SourceStream? {
         val configId = uri.getQueryParameter("s") ?: return null
         val trackId = uri.getQueryParameter("t") ?: return null
+        // The rendition the listener asked for rides on the URI, so the
+        // resolver, the disk cache and the service all agree on which file
+        // this is. Absent the parameter the ordinary setting answers.
+        val request = when (uri.getQueryParameter(RENDITION_PARAM)) {
+            "atmos" -> if (DeviceCodecs.playsDolbyAtmos) StreamRequest.Atmos else StreamRequest.Lossless
+            "hires" -> StreamRequest.HiRes
+            "lossless" -> StreamRequest.Lossless
+            else -> null
+        }
         return resolve(
             configId = configId,
             trackId = trackId,
             target = targetIn(uri),
+            request = request,
         )
     }
 
@@ -189,8 +209,9 @@ object SourceResolver {
         configId: String,
         trackId: String,
         target: TrackMatcher.Target,
+        request: StreamRequest? = null,
     ): SourceStream? {
-        val request = requestForNow()
+        val request = request ?: requestForNow()
         val active = SourceRegistry.activeForPlayback()
         // A pin identifies where the row originally came from; it does not
         // override the source switch. Looking the instance up directly used to

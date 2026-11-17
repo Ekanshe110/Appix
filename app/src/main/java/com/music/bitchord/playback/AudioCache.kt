@@ -556,7 +556,14 @@ object AudioCache {
                 val track = uri.getQueryParameter("t")
                 if (source != null && track != null) {
                     val base = "$source|$track"
-                    QualityUpgrade.cacheTag(uri)?.let { "$base#$it" } ?: base
+                    // The rendition is part of the key: the lossless master and
+                    // the Atmos mix of one recording are different files, and
+                    // an entry written for one of them must never be served
+                    // for the other. The switch rides on the URI — see
+                    // [PlaybackService.switchCurrentRendition] — so it is read
+                    // here rather than kept anywhere else.
+                    val tag = QualityUpgrade.cacheTag(uri) ?: uri.getQueryParameter("rend")
+                    tag?.let { "$base#$it" } ?: base
                 } else {
                     null
                 }

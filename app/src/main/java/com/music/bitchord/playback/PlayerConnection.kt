@@ -237,6 +237,20 @@ fun MediaController.swapToVersion(targetSong: Song) {
 }
 
 /**
+ * Asks the service to re-open the playing track in another rendition, at the
+ * same position.
+ *
+ * The rendition is named rather than numbered, so the service can answer with
+ * the same word the resolver reads back: `atmos`, `hires` or `lossless`.
+ */
+fun MediaController.switchRendition(rendition: String) {
+    sendCustomCommand(
+        SessionCommand(ACTION_SWITCH_RENDITION, Bundle.EMPTY),
+        bundleOf(EXTRA_RENDITION to rendition),
+    )
+}
+
+/**
  * The credited artists, read back out of the two parallel lists they travel in.
  *
  * A `Song` is a data class and a `MediaItem`'s extras are a `Bundle`, which
@@ -283,6 +297,8 @@ fun Song.toSongBundle(): Bundle = bundleOf(
     "playbackSourceType" to playbackSourceType?.name,
     "playbackSourceId" to playbackSourceId,
     "isExplicit" to (isExplicit ?: false),
+    "atmosAvailable" to atmosAvailable,
+    "hiResAvailable" to hiResAvailable,
     // `bundleOf` has no overload for a list of strings, so the two halves of
     // the credits go in afterwards.
 ).apply {
@@ -313,6 +329,8 @@ fun songFromBundle(b: Bundle): Song = Song(
     playbackSourceType = b.getString("playbackSourceType")?.let { runCatching { com.music.bitchord.data.model.PlaybackSourceType.valueOf(it) }.getOrNull() },
     playbackSourceId = b.getString("playbackSourceId"),
     isExplicit = if (b.containsKey("isExplicit")) b.getBoolean("isExplicit") else null,
+    atmosAvailable = b.getBoolean("atmosAvailable"),
+    hiResAvailable = b.getBoolean("hiResAvailable"),
 )
 
 /** Flushes the current radio queue to disk before reporting that it started. */
@@ -583,6 +601,8 @@ fun MediaItem.toSong() = Song(
     // though both had been known.
     downloadFormat = mediaMetadata.extras?.getString(EXTRA_DOWNLOAD_FORMAT),
     sourceQuality = mediaMetadata.extras?.getString(EXTRA_SOURCE_QUALITY),
+    atmosAvailable = mediaMetadata.extras?.getBoolean(EXTRA_ATMOS_AVAILABLE) == true,
+    hiResAvailable = mediaMetadata.extras?.getBoolean(EXTRA_HIRES_AVAILABLE) == true,
 )
 
 /** @see Song.fromAutoplay */
@@ -686,6 +706,18 @@ private const val EXTRA_VIDEO_ORIGIN = "bitchord.isVideoOrigin"
 
 /** Set only on the replacement item produced by [QualityUpgrade]. */
 const val EXTRA_QUALITY_UPGRADED = "bitchord.qualityUpgraded"
+
+/** @see Song.atmosAvailable */
+internal const val EXTRA_ATMOS_AVAILABLE = "bitchord.atmosAvailable"
+
+/** @see Song.hiResAvailable */
+internal const val EXTRA_HIRES_AVAILABLE = "bitchord.hiResAvailable"
+
+/**
+ * The rendition the listener asked for, in the session command that carries
+ * the switch: `atmos`, `hires` or `lossless`.
+ */
+internal const val EXTRA_RENDITION = "bitchord.rendition"
 
 /**
  * Whether this item was selected from a music-video row, even after conversion.
@@ -942,6 +974,7 @@ fun Song.toMediaItem(parentBrowseId: String? = null, playLocalFile: Boolean = tr
                     artistId != null || albumId != null || setVideoId != null ||
                     isExplicit != null || isVideo || isVideoOrigin || radioName != null ||
                     playbackSource != null || playbackSourceType != null || playbackSourceId != null ||
+                    atmosAvailable || hiResAvailable ||
                     parentBrowseId != null
                 ) {
                     setExtras(
@@ -971,6 +1004,8 @@ fun Song.toMediaItem(parentBrowseId: String? = null, playLocalFile: Boolean = tr
                             EXTRA_EXPLICIT to isExplicit,
                             EXTRA_IS_VIDEO to isVideo,
                             EXTRA_VIDEO_ORIGIN to isVideoOrigin,
+                            EXTRA_ATMOS_AVAILABLE to atmosAvailable,
+                            EXTRA_HIRES_AVAILABLE to hiResAvailable,
                         ),
                     )
                 }
