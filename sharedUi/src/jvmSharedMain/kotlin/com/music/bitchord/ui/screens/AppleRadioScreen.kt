@@ -93,9 +93,13 @@ fun AppleRadioScreen(
                 }
             }
             when (val page = state) {
-                is UiState.Loading -> item(key = "apple-radio:loading") { feedSkeleton() }
+                is UiState.Loading -> feedSkeleton(firstIsHero = false)
                 is UiState.Error -> item(key = "apple-radio:error") {
-                    MessageState(page.message) { onRetry() }
+                    MessageState(
+                        message = page.message,
+                        actionLabel = stringResource(Res.string.retry),
+                        onAction = onRetry,
+                    )
                 }
                 is UiState.Success -> items(page.data, key = { "apple-radio:${it.id}" }) { station ->
                     AppleStationRow(station = station, onClick = { onStationClick(station) })

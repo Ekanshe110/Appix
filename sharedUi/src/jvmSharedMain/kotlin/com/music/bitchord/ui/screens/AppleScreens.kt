@@ -107,9 +107,13 @@ fun AppleHomeScreen(
                 }
             }
             when (val page = state) {
-                is UiState.Loading -> item(key = "apple:loading") { feedSkeleton() }
+                is UiState.Loading -> feedSkeleton(firstIsHero = false)
                 is UiState.Error -> item(key = "apple:error") {
-                    MessageState(page.message) { onRetry() }
+                    MessageState(
+                        message = page.message,
+                        actionLabel = stringResource(Res.string.retry),
+                        onAction = onRetry,
+                    )
                 }
                 is UiState.Success -> {
                     val shelves = page.data
@@ -162,7 +166,7 @@ fun AppleHomeScreen(
                                 item = shelf.items.firstOrNull() ?: return@items,
                                 shelfTitle = shelf.title,
                                 onClick = { item -> onItemClick(item, shelf.title) },
-                                onLongPress = onItemLongPress?.let { { item -> it(item) } },
+                                onLongPress = onItemLongPress,
                             )
                         }
                     }
@@ -244,7 +248,7 @@ private fun AppleShelfGrid(
                         shelf = shelf,
                         item = item,
                         onClick = { item -> onItemClick(item, shelf.title) },
-                        onLongPress = onItemLongPress?.let { { item -> it(item) } },
+                        onLongPress = onItemLongPress,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -262,7 +266,7 @@ private fun AppleGridCard(
     shelf: HomeShelf,
     item: ShelfItem?,
     onClick: (ShelfItem) -> Unit,
-    onLongPress: (() -> Unit)?,
+    onLongPress: ((ShelfItem) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -273,10 +277,11 @@ private fun AppleGridCard(
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .then(
-                    if (onLongPress != null && item != null) {
-                        Modifier.clickable(onClick = { onClick(item) })
-                    } else if (item != null) {
-                        Modifier.clickable { onClick(item) }
+                    if (item != null) {
+                        Modifier.clickable(
+                            onClick = { onClick(item) },
+                            onLongClick = onLongPress?.let { { it(item) } },
+                        )
                     } else {
                         Modifier
                     },
@@ -317,12 +322,15 @@ private fun AppleExploreRow(
     item: ShelfItem,
     shelfTitle: String,
     onClick: (ShelfItem) -> Unit,
-    onLongPress: (() -> Unit)?,
+    onLongPress: ((ShelfItem) -> Unit)?,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick(item) }
+            .clickable(
+                onClick = { onClick(item) },
+                onLongClick = onLongPress?.let { { it(item) } },
+            )
             .padding(horizontal = PAGE_GUTTER, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
