@@ -630,10 +630,13 @@ private fun Modifier.qualityBadgeGestures(
     val tap by rememberUpdatedState(onTap)
     return pointerInput(Unit) {
         awaitEachGesture {
-            awaitFirstDown(requireUnconsumed = false)
+            val down = awaitFirstDown(requireUnconsumed = false)
             // Null when the finger came up before the hold was long enough —
             // which is a tap, and means the switch.
-            val held = awaitLongPressOrCancellation(durationMillis = QUALITY_STATS_HOLD_MS)
+            val held = awaitLongPressOrCancellation(
+                pointerId = down.id,
+                durationMillis = QUALITY_STATS_HOLD_MS,
+            )
             if (held != null) hold() else tap()
         }
     }
