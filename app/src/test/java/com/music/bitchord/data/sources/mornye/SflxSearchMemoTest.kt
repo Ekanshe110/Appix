@@ -115,6 +115,26 @@ class SflxSearchMemoTest {
     }
 
     @Test
+    fun `a finished question does not answer a stale one`() = runBlocking {
+        val clock = Clock()
+        val memo = SflxSearchMemo<String>(ttlMs = 120_000, clock = clock::read)
+        val asked = AtomicInteger(0)
+
+        // The same question, asked and answered again and again, each time
+        // after its answer has gone stale. A finished question left in the
+        // book's index must not answer the next one — the catalogue may have
+        // changed since. Run it often enough for that race to show up.
+        repeat(200) {
+            memo.once("tidal|heavy moon|5") {
+                asked.incrementAndGet()
+                Result.success("Heavy Moon")
+            }.getOrNull()
+            clock.advance(121_000)
+        }
+        assertEquals("every stale question was asked again", 200, asked.get())
+    }
+
+    @Test
     fun `forgetting one extension's answers leaves the others alone`() = runBlocking {
         val memo = SflxSearchMemo<String>(ttlMs = 120_000)
         val asked = AtomicInteger(0)
