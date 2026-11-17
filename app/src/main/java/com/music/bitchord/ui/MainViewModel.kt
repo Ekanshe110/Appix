@@ -267,6 +267,59 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val explore: StateFlow<UiState<List<MoodGenreSection>>> = _explore.asStateFlow()
 
     /**
+     * Apple's own stations, for the Radio page under Apple's look.
+     *
+     * Apple's radio is its stations: the live ones Apple's player holds
+     * under Widevine, and the seeded ones it builds from an artist, a genre
+     * or a song. No Flow and no "search a station" — neither is Apple's, and
+     * a page that offers them is not Apple's page.
+     */
+    private val _appleRadio = MutableStateFlow<UiState<List<RadioStation>>>(UiState.Loading)
+    val appleRadio: StateFlow<UiState<List<RadioStation>>> = _appleRadio.asStateFlow()
+
+    /**
+     * Reads Apple's stations: the listener's own, the editorial ones and the
+     * live ones, in Apple's own order.
+     */
+    fun loadAppleRadio() {
+        _appleRadio.value = UiState.Loading
+        viewModelScope.launch {
+            val handle = com.music.bitchord.data.apple.AppleSources.handle()
+            if (handle == null) {
+                _appleRadio.value = UiState.Error(text(R.string.provider_apple_manifest_missing_subtitle))
+                return@launch
+            }
+            val stations = com.music.bitchord.data.apple.AppleSources.stations(handle)
+                .getOrElse { failure ->
+                    _appleRadio.value = UiState.Error(failure.friendly())
+                    return@launch
+                }
+            val live = com.music.bitchord.data.apple.AppleSources.liveStations(handle).getOrDefault(emptyList())
+            val rows = (stations + live).distinctBy { it.id }.map { it.station() }
+            _appleRadio.value = if (rows.isEmpty()) {
+                UiState.Error(text(R.string.apple_radio_empty))
+            } else {
+                UiState.Success(rows)
+            }
+        }
+    }
+
+    /**
+     * The songs of one Apple station — what plays after the seed.
+     *
+     * Null for a station with no queue of its own, which is what a live
+     * station is: its audio is a continuous stream rather than a list.
+     */
+    suspend fun appleStationSongs(stationId: String): List<Song>? {
+        val handle = com.music.bitchord.data.apple.AppleSources.handle() ?: return null
+        val items = com.music.bitchord.data.apple.AppleSources.stationTracks(handle, stationId)
+            .getOrNull()
+            .orEmpty()
+        if (items.isEmpty()) return null
+        return items.map { it.song(handle.configId) }
+    }
+
+    /**
      * The podcast shows the account follows.
      *
      * A show is its own kind of thing — something you subscribe to, with
@@ -2388,7 +2441,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             when (feed) {
                 Feed.HOME -> refreshHome(identity)
-                Feed.EXPLORE -> fetchExplore()
+                Feed.EXPLORE -> if (AppSettings.providerAxes.value.ui == MusicProvider.APPLE) {
+                    loadAppleRadio()
+                } else {
+                    fetchExplore()
+                }
                 Feed.LIBRARY -> fetchLibrary(identity)
                 Feed.PODCASTS -> {
                     fetchPodcasts()
@@ -2404,6 +2461,35 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _explore.value = UiState.Loading
         viewModelScope.launch { fetchExplore() }
     }
+
+    /**
+     * The Radio page's own load, under Apple's look.
+     *
+     * Apple's stations are read when the tab is first shown, the same way
+     * YouTube's explore page is — a network page nobody may open should not
+     * be on the wire before the home feed has landed.
+     */
+    fun loadRadio() {
+        if (AppSettings.providerAxes.value.ui == MusicProvider.APPLE) {
+            loadAppleRadio()
+            return
+        }
+        loadExplore()
+    }
+
+    /**
+     * Loads the radio page once, the first time the tab becomes visible.
+     *
+     * A later failure is left to the page's own Retry rather than re-read on
+     * every tab switch — the same rule the explore page follows.
+     */
+    fun ensureRadioLoaded() {
+        if (radioRequested) return
+        radioRequested = true
+        loadRadio()
+    }
+
+    private var radioRequested = false
 
     /** Loads the podcast feed, once; later failures wait for the page's Retry. */
     fun ensurePodcastsLoaded() {

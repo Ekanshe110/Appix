@@ -3,6 +3,7 @@ package com.music.bitchord.data.apple
 import com.music.bitchord.data.model.BrowseItem
 import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.model.HomeShelf
+import com.music.bitchord.data.model.RadioStation
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.Song
@@ -218,3 +219,19 @@ internal fun durationText(ms: Long): String {
     val total = ms / 1000
     return "%d:%02d".format(total / 60, total % 60)
 }
+
+/**
+ * The station, as the radio page draws it.
+ *
+ * A live station carries Apple's own address rather than audio: its stream
+ * is Widevine-protected and only Apple's player plays it, so the page opens
+ * Apple's page for it and says so with the LIVE mark.
+ */
+internal fun AppleStation.station(): RadioStation = RadioStation(
+    id = id,
+    name = name,
+    subtitle = subtitle,
+    artworkUrl = artworkURL,
+    isLive = isLive == true,
+    deepLink = url?.takeIf { it.startsWith("http://") || it.startsWith("https://") },
+)

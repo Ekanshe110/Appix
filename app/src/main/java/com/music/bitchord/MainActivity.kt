@@ -348,6 +348,7 @@ import com.music.bitchord.ui.screens.ExploreScreen
 import com.music.bitchord.ui.screens.PodcastsScreen
 import com.music.bitchord.ui.screens.LocalMusicScreen
 import com.music.bitchord.ui.screens.AppleHomeScreen
+import com.music.bitchord.ui.screens.AppleRadioScreen
 import com.music.bitchord.ui.screens.HomeScreen
 import com.music.bitchord.ui.screens.LibraryGridPage
 import com.music.bitchord.ui.screens.LibraryScreen
@@ -897,7 +898,7 @@ private fun BitChordApp(
     val searchSourceState = viewModel.searchSource.collectAsStateWithLifecycle()
     val searchSource by searchSourceState
     LaunchedEffect(nav.selectedTab) {
-        if (nav.selectedTab == TAB_RADIO || nav.showGenres) viewModel.ensureExploreLoaded()
+        if (nav.selectedTab == TAB_RADIO || nav.showGenres) viewModel.ensureRadioLoaded()
         if (nav.selectedTab == TAB_SEARCH) {
             searchVisualActive = true
         } else {
@@ -4836,6 +4837,9 @@ private fun RootPage(
     val pageActions = inputs.pageActions
     val listPadding = inputs.listPadding
     val context = LocalContext.current
+    // The page's own scope, for the work a tap starts that has to outlive
+    // the click: reading a station's songs, for instance.
+    val pageScope = rememberCoroutineScope()
     val account by inputs.accountState
     val audiobooks by inputs.audiobooksState
     val detailStack by inputs.detailStackState
@@ -4888,6 +4892,8 @@ private fun RootPage(
     val flowBanned by com.music.bitchord.data.flow.FlowStore.bannedIds.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val exploreState by viewModel.explore.collectAsStateWithLifecycle()
+    // Apple's own stations, for the Radio page under Apple's look.
+    val appleRadioState by viewModel.appleRadio.collectAsStateWithLifecycle()
     val podcastsState by viewModel.podcasts.collectAsStateWithLifecycle()
     val podcastSections by viewModel.podcastSections.collectAsStateWithLifecycle()
     val itunesSearchQuery by viewModel.itunesSearchQuery.collectAsStateWithLifecycle()
@@ -5743,7 +5749,49 @@ private fun RootPage(
             pullState = scroll.podcastPull,
             contentPadding = listPadding,
         )
-        TAB_RADIO -> selectedMoodGenre?.let { category ->
+        TAB_RADIO -> if (appleUi) {
+            // Apple's radio: its own stations, live ones marked and opened in
+            // Apple's player, seeded ones played here. No Flow, and no
+            // "search a station" — neither is Apple's.
+            AppleRadioScreen(
+                state = appleRadioState,
+                listState = scroll.radio,
+                onStationClick = { station ->
+                    if (station.isLive) {
+                        // A live station's audio is Widevine-protected and
+                        // only Apple's own player decodes it. The row says
+                        // LIVE, and tapping it opens Apple's page for it.
+                        station.deepLink?.let { link ->
+                            runCatching {
+                                context.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(link),
+                                    ),
+                                )
+                            }
+                        }
+                    } else {
+                        // A seeded station is a queue of songs, and it plays
+                        // here.
+                        pageScope.launch {
+                            val songs = viewModel.appleStationSongs(station.id) ?: return@launch
+                            pageActions.playFrom(
+                                songs,
+                                0,
+                                QueueSource(station.name, PlaybackSourceType.RADIO),
+                            )
+                        }
+                    }
+                },
+                onRetry = viewModel::loadAppleRadio,
+                refreshing = MainViewModel.Feed.EXPLORE in refreshing,
+                onRefresh = { viewModel.refresh(MainViewModel.Feed.EXPLORE) },
+                pullState = scroll.explorePull,
+                contentPadding = listPadding,
+                title = stringResource(R.string.radio),
+            )
+        } else selectedMoodGenre?.let { category ->
             MoodGenrePlaylistsScreen(
                 title = category.title,
                 state = moodGenreShelves,

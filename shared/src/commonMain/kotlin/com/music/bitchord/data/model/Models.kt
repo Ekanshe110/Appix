@@ -692,6 +692,36 @@ data class UserPlaylist(
 }
 
 /**
+ * One radio station, as the radio page draws it.
+ *
+ * A station is either a *seeded* station — Apple's own queue of songs, built
+ * from an artist, a genre, a playlist or a song, and playable here — or a
+ * *live* one, which is a continuous stream Apple's own player holds under
+ * Widevine. A live station therefore carries an address to open rather than
+ * audio to play, and the page says so with [isLive] rather than pretending.
+ */
+data class RadioStation(
+    /** The catalogue's own id for the station. */
+    val id: String,
+    /** The station's name, as the catalogue gives it. */
+    val name: String,
+    /** The line under the name — an artist, a genre, a curator. */
+    val subtitle: String? = null,
+    /** The station's artwork. */
+    val artworkUrl: String? = null,
+    /** Whether this is a continuous live stream rather than a song queue. */
+    val isLive: Boolean = false,
+    /**
+     * Where a live station is opened.
+     *
+     * Apple's own page for it, when the catalogue published one. A station
+     * with no address cannot be opened anywhere, and the page says that
+     * rather than offering a tap that goes nowhere.
+     */
+    val deepLink: String? = null,
+)
+
+/**
  * The per-track state that only YouTube can answer: its rating, and whether it
  * is in the library.
  *
