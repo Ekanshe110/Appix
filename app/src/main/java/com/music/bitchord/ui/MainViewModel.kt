@@ -34,6 +34,7 @@ import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.HomeProvider
 import com.music.bitchord.data.settings.MusicProvider
+import com.music.bitchord.data.apple.song
 import com.music.bitchord.data.spotify.SpotifyHomeSource
 import com.music.bitchord.data.settings.withoutBlockedArtists
 import com.music.bitchord.data.settings.withoutBlockedRecommendations
@@ -3477,13 +3478,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         SearchFilter.ARTISTS -> "artists"
                         else -> "songs,albums,playlists,artists"
                     }
-                    val page = runCatching {
-                        com.music.bitchord.data.apple.AppleSources.search(
-                            handle = handle,
-                            query = request.query,
-                            types = types,
-                        )
-                    }
+                    val page = com.music.bitchord.data.apple.AppleSources.search(
+                        handle = handle,
+                        query = request.query,
+                        types = types,
+                    )
                     if (request.requestId != newestRequestId.get()) return@collectLatest
                     _results.value = page.fold(
                         onSuccess = { rows ->

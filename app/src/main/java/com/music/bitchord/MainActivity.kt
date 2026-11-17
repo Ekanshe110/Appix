@@ -347,6 +347,7 @@ import com.music.bitchord.ui.screens.ItunesPodcastScreen
 import com.music.bitchord.ui.screens.ExploreScreen
 import com.music.bitchord.ui.screens.PodcastsScreen
 import com.music.bitchord.ui.screens.LocalMusicScreen
+import com.music.bitchord.ui.screens.AppleHomeScreen
 import com.music.bitchord.ui.screens.HomeScreen
 import com.music.bitchord.ui.screens.LibraryGridPage
 import com.music.bitchord.ui.screens.LibraryScreen
@@ -4873,6 +4874,11 @@ private fun RootPage(
     // Which catalogue is drawing the page. Spotify's shelves are cards of
     // collections, and the full-bleed hero treatment is for a row of tracks.
     val homeProvider by AppSettings.homeProvider.collectAsStateWithLifecycle()
+    // Which catalogue's *look* the screens wear. Apple's layout over
+    // YouTube's rows is still YouTube's rows, drawn differently — the axes
+    // are separate, and this one is only the drawing.
+    val providerAxes by AppSettings.providerAxes.collectAsStateWithLifecycle()
+    val appleUi = providerAxes.ui == com.music.bitchord.data.settings.MusicProvider.APPLE
     val homeReplayVisible by AppSettings.homeReplayVisible.collectAsStateWithLifecycle()
     val homeShelfTitles by viewModel.homeShelfTitles.collectAsStateWithLifecycle()
     val flowLoading by viewModel.flowLoading.collectAsStateWithLifecycle()
@@ -4931,6 +4937,52 @@ private fun RootPage(
     val pageDetailListState = remember(key) {
         inputs.detailListStates.forPage(key)
     }
+    /**
+     * A row on the home page was tapped.
+     *
+     * Shared by Apple's own page and the ordinary one: the rows are the same
+     * rows whichever shape they are drawn in, and the look axis changes the
+     * drawing only.
+     */
+    val onHomeItemClick: (ShelfItem, String) -> Unit = { item, shelfTitle ->
+        val song = pageActions.shelfSong(item)
+        // Hoisted because ShelfItem lives in :shared, and
+        // Kotlin will not smart-cast a public nullable
+        // property declared in another module.
+        val browseId = item.browseId
+        when {
+            browseId == com.music.bitchord.data.flow.FlowRules.FLOW_BROWSE_ID -> {
+                // Flow tap only opens the page — never
+                // rebuilds, never plays. BACK + tap
+                // returns to this same mix; Play and
+                // Shuffle inside it are what start
+                // playback, New mix is the only reset.
+                sheets.showFlow = true
+            }
+            song != null -> {
+                val source = QueueSource(shelfTitle, PlaybackSourceType.HOME)
+                // A track that is on the device plays
+                // from the device: the station it would
+                // otherwise start needs the network, and
+                // offline the app has none. The whole
+                // library goes with it, so the shelf is
+                // the start of a set rather than one
+                // track.
+                if (offlineActive && pageActions.isOnDevice(song.videoId)) {
+                    pageActions.playOfflineLibrary(song, source)
+                } else {
+                    pageActions.playRadio(song, source)
+                }
+            }
+            browseId != null -> viewModel.openDetail(
+                browseId = browseId,
+                title = item.title,
+                subtitle = item.subtitle,
+                thumbnailUrl = item.thumbnailUrl,
+            )
+        }
+    }
+
     if (key == "history") {
         HistoryScreen(
             state = historyState,
@@ -5565,7 +5617,27 @@ private fun RootPage(
             contentPadding = listPadding,
         )
     } else when (key.removePrefix(TAB_KEY).toIntOrNull() ?: nav.selectedTab) {
-        TAB_HOME -> HomeScreen(
+        TAB_HOME -> if (appleUi) {
+            // Apple's own shape: a large head card, a two-column grid and a
+            // plain list under it. The rows are whatever the recommendation
+            // axis supplied — the look axis changes the drawing, not the
+            // catalogue.
+            AppleHomeScreen(
+                state = homeWithFlow,
+                listState = scroll.home,
+                currentSong = player.song,
+                isPlaying = player.isPlaying,
+                title = stringResource(R.string.home),
+                onItemClick = onHomeItemClick,
+                onItemLongPress = pageActions.onShelfLongPress,
+                onRetry = viewModel::loadHome,
+                refreshing = MainViewModel.Feed.HOME in refreshing,
+                onRefresh = { viewModel.refresh(MainViewModel.Feed.HOME) },
+                pullState = scroll.homePull,
+                contentPadding = listPadding,
+            )
+        } else {
+        HomeScreen(
             state = homeWithFlow,
             listState = scroll.home,
             currentSong = player.song,
@@ -5582,44 +5654,7 @@ private fun RootPage(
             onSignIn = { sheets.webSession = WebSessionMode.SIGN_IN },
             signInBannerDismissed = signInBannerDismissed,
             onDismissSignInBanner = { signInBannerDismissed = true },
-            onItemClick = { item, shelfTitle ->
-                val song = pageActions.shelfSong(item)
-                // Hoisted because ShelfItem lives in :shared, and
-                // Kotlin will not smart-cast a public nullable
-                // property declared in another module.
-                val browseId = item.browseId
-                when {
-                    browseId == com.music.bitchord.data.flow.FlowRules.FLOW_BROWSE_ID -> {
-                        // Flow tap only opens the page — never
-                        // rebuilds, never plays. BACK + tap
-                        // returns to this same mix; Play and
-                        // Shuffle inside it are what start
-                        // playback, New mix is the only reset.
-                        sheets.showFlow = true
-                    }
-                    song != null -> {
-                        val source = QueueSource(shelfTitle, PlaybackSourceType.HOME)
-                        // A track that is on the device plays
-                        // from the device: the station it would
-                        // otherwise start needs the network, and
-                        // offline the app has none. The whole
-                        // library goes with it, so the shelf is
-                        // the start of a set rather than one
-                        // track.
-                        if (offlineActive && pageActions.isOnDevice(song.videoId)) {
-                            pageActions.playOfflineLibrary(song, source)
-                        } else {
-                            pageActions.playRadio(song, source)
-                        }
-                    }
-                    browseId != null -> viewModel.openDetail(
-                        browseId = browseId,
-                        title = item.title,
-                        subtitle = item.subtitle,
-                        thumbnailUrl = item.thumbnailUrl,
-                    )
-                }
-            },
+            onItemClick = onHomeItemClick,
             flowItem = inputs.homeFlowLeading,
             onFlowClick = { sheets.showFlow = true },
             // The arrow at the end of the Quick Picks heading:
@@ -5647,6 +5682,7 @@ private fun RootPage(
             loadingMore = homeLoadingMore,
             recentlyPlayedLoading = homeRecentlyPlayedLoading,
         )
+        }
         TAB_PODCASTS -> PodcastsScreen(
             state = podcastsState,
             listState = scroll.podcast,
