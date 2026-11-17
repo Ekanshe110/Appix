@@ -708,6 +708,10 @@ private fun BitChordApp(
     // filter. See AppSettings.podcastsEnabled.
     val podcastsEnabledState = AppSettings.podcastsEnabled.collectAsStateWithLifecycle()
     val podcastsEnabled by podcastsEnabledState
+    // The three provider axes — look, recommendations, catalogue. Read here
+    // so the whole app can act on them without each screen collecting its
+    // own copy of the same state.
+    val providerAxes by AppSettings.providerAxes.collectAsStateWithLifecycle()
     val nav = rememberSaveable(saver = RootNav.Saver) { RootNav() }
     /**
      * Whether the player's sheet is up. The player is always a full-screen
@@ -3116,6 +3120,10 @@ private fun BitChordApp(
                     }
                     // Handled inside NowPlayingScreen by opening its queue.
                     PlaybackSourceType.QUEUE -> Unit
+                    // A radio station: the Radio page is where it came from.
+                    PlaybackSourceType.RADIO -> {
+                        nav.selectedTab = TAB_RADIO
+                    }
                 }
             },
             lyrics = lyrics,
@@ -4785,6 +4793,7 @@ private fun BitChordApp(
         RootOverlays(
             sheets = sheets,
             viewModel = viewModel,
+            providerAxes = providerAxes,
             scope = scope,
             hazeState = hazeState,
             podcastUi = podcastUi,
@@ -6345,6 +6354,7 @@ private data class TrackListActions(
 private fun RootOverlays(
     sheets: RootSheets,
     viewModel: MainViewModel,
+    providerAxes: com.music.bitchord.data.settings.ProviderAxes,
     scope: kotlinx.coroutines.CoroutineScope,
     hazeState: HazeState,
     podcastUi: PodcastUiState,

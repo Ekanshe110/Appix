@@ -352,7 +352,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * the same way the other path does.
      */
     fun addSongsToApplePlaylist(
-        playlistId: String,
+        playlists: List<UserPlaylist>,
         songs: List<Song>,
         onResult: (added: Int, failed: Int) -> Unit,
     ) {
@@ -370,11 +370,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 onResult(0, songs.size)
                 return@launch
             }
-            val written = com.music.bitchord.data.apple.AppleCatalogue
-                .addToPlaylist(handle.baseUrl, playlistId, ids)
-                .isSuccess
-            if (written) onResult(ids.size, songs.size - ids.size)
-            else onResult(0, songs.size)
+            // Each ticked playlist is filed separately: Apple files one
+            // playlist at a time, and a row goes into every playlist that
+            // was ticked.
+            var added = 0
+            var failed = 0
+            for (playlist in playlists) {
+                val written = com.music.bitchord.data.apple.AppleCatalogue
+                    .addToPlaylist(handle.baseUrl, playlist.playlistId, ids)
+                    .isSuccess
+                if (written) added += ids.size else failed += ids.size
+            }
+            if (playlists.isEmpty()) {
+                onResult(0, songs.size)
+            } else {
+                onResult(added, failed)
+            }
         }
     }
 
