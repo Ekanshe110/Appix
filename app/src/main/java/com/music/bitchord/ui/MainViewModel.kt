@@ -1331,6 +1331,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun toggleLike(song: Song) {
         if (!requireSignIn()) return
+        // An Apple row is rated in Apple's own ratings, through the installed
+        // manifest — the source axis decides which service owns the heart.
+        if (AppSettings.providerAxes.value.source == MusicProvider.APPLE) {
+            viewModelScope.launch {
+                if (rateAppleRow(song)) return@launch
+                rateSongInYouTube(song)
+            }
+            return
+        }
+        rateSongInYouTube(song)
+    }
+
+    /** The heart for a row that is not Apple's: YouTube's own rating. */
+    private fun rateSongInYouTube(song: Song) {
         if (!RatingTarget.isRowId(song.videoId)) {
             toggleLike(song.videoId)
             return
@@ -1338,6 +1352,45 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val previous = likeStatusOf(song)
         val target = if (previous == LikeStatus.LIKE) LikeStatus.INDIFFERENT else LikeStatus.LIKE
         rateRow(song, target)
+    }
+
+    /**
+     * Rates an Apple row in Apple, and says whether it did.
+     *
+     * Two things happen when the heart comes off an Apple row. The rating is
+     * taken back, so the row is no longer a favourite — and the row is taken
+     * out of Apple's *Favourite Songs* playlist as well. Apple's own app
+     * keeps the two in step, and a row that stays in the playlist after the
+     * heart has gone is a row the listener can still find in their library
+     * and cannot explain.
+     *
+     * False for a row that is not Apple's, and for an install with no Apple
+     * Music manifest — in which case the caller's own path runs.
+     */
+    private suspend fun rateAppleRow(song: Song): Boolean {
+        val handle = com.music.bitchord.data.apple.AppleSources.handle() ?: return false
+        val parsed = com.music.bitchord.data.sources.SourceRegistry.parseTrackKey(song.videoId)
+            ?: return false
+        if (parsed.first != handle.configId) return false
+        val appleId = parsed.second
+        val previous = likeStatusOf(song)
+        val liked = previous != LikeStatus.LIKE
+        // The heart is written to the screen first and rolled back if Apple
+        // refuses, the same as everywhere else.
+        LikeState.set(song.videoId, if (liked) LikeStatus.LIKE else LikeStatus.INDIFFERENT)
+        val written = com.music.bitchord.data.apple.AppleCatalogue
+            .setFavourite(handle.baseUrl, appleId, liked)
+            .isSuccess
+        if (!written) {
+            LikeState.set(song.videoId, previous)
+            return true
+        }
+        if (!liked) {
+            // Off the heart, out of Favourite Songs.
+            com.music.bitchord.data.apple.AppleCatalogue
+                .removeFromFavourites(handle.baseUrl, listOf(appleId))
+        }
+        return true
     }
 
     /**
