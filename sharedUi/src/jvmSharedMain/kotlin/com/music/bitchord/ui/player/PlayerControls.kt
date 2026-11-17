@@ -41,7 +41,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.awaitPointerEvent
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.TimeoutCancellationException
@@ -638,15 +637,19 @@ private fun Modifier.qualityBadgeGestures(
             // Wait for the finger to come up.  A timeout means it was held
             // for the whole second, which is the hold; an early release is a
             // tap.
-            val released = try {
+            var released = false
+            try {
                 withTimeout(QUALITY_STATS_HOLD_MS) {
-                    awaitPointerEvent(PointerEventPass.Main) { event ->
-                        event.changes.any { it.changedToUpIgnoreConsumed() }
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        if (event.changes.any { it.changedToUpIgnoreConsumed() }) {
+                            released = true
+                            break
+                        }
                     }
                 }
-                true
             } catch (timeout: TimeoutCancellationException) {
-                false
+                released = false
             }
             if (released) tap() else hold()
         }
