@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Auris</string>
+    <string name="app_name">Appix</string>
     <string name="automix_analysis_menu">Automix analysis</string>
     <string name="playback_channel_name">Now playing</string>
     <string name="download_channel_name">Downloads</string>
@@ -150,6 +150,22 @@
     <string name="home_provider_spotify_subtitle">Spotify\'s own home and catalogue. Signed in, Flow also takes from what you play there.</string>
     <string name="home_provider_youtube_subtitle">YouTube Music\'s own home and catalogue, and its feed for Flow.</string>
     <string name="home_provider_restart">Auris will restart to apply this.</string>
+    <string name="settings_category_provider">Provider</string>
+    <string name="provider_footer">The three axes are independent: any mix of them works. Apple is read through an installed Apple Music manifest, never from inside the app.</string>
+    <string name="provider_apple_master">Apple Music everywhere</string>
+    <string name="provider_apple_master_subtitle">Points the look, the recommendations and the catalogue at Apple Music in one tap.</string>
+    <string name="provider_axis_ui">Appearance</string>
+    <string name="provider_axis_ui_subtitle">Which catalogue\'s design the screens wear. The outer look only.</string>
+    <string name="provider_axis_recommendation">Recommendations</string>
+    <string name="provider_axis_recommendation_subtitle">Which algorithm builds Home, Flow and Autoplay. What is suggested, not where it comes from.</string>
+    <string name="provider_axis_source">Source</string>
+    <string name="provider_axis_source_subtitle">Where songs, metadata, lyrics and artwork come from — and which catalogue id a track is known by.</string>
+    <string name="provider_apple">Apple Music</string>
+    <string name="provider_youtube_subtitle">YouTube Music\'s own catalogue and its feed for Home, Flow and Autoplay.</string>
+    <string name="provider_spotify_subtitle">Spotify\'s own catalogue and its own discovery. Needs a Spotify sign-in.</string>
+    <string name="provider_apple_subtitle">Apple Music\'s own catalogue, discovery and library, read through an installed Apple Music manifest.</string>
+    <string name="provider_apple_manifest_missing_title">No Apple Music manifest installed</string>
+    <string name="provider_apple_manifest_missing_subtitle">Install an Apple Music manifest on the Sources screen. Until one is installed, Apple cannot answer anything.</string>
     <string name="account_scrobbling">Account &amp; scrobbling</string>
     <string name="rich_presence">Rich presence</string>
     <string name="scrobbling">Scrobbling</string>

@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.ScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Apple
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Download
@@ -320,6 +321,12 @@ fun SettingsScreen(
                 sheets = sheets,
                 onSources = onSources,
                 onEqualizer = onEqualizer,
+            )
+        }
+        if (shows(SettingsCategory.PROVIDER)) {
+            ProviderSettings(
+                search = search,
+                sheets = sheets,
             )
         }
         if (shows(SettingsCategory.PLAYBACK)) {
@@ -956,6 +963,7 @@ private val SettingsCategory.icon: ImageVector
         SettingsCategory.ACCOUNT -> Icons.Rounded.Person
         SettingsCategory.AUDIO -> Icons.Rounded.GraphicEq
         SettingsCategory.PLAYBACK -> Icons.Rounded.PlayArrow
+        SettingsCategory.PROVIDER -> Icons.Rounded.Apple
         SettingsCategory.DOWNLOADS -> Icons.Rounded.Download
         SettingsCategory.NOW_PLAYING -> Icons.Rounded.MusicNote
         SettingsCategory.HOME_LIBRARY -> Icons.Rounded.Home

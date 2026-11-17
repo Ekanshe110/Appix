@@ -72,7 +72,32 @@ data class AddonManifest(
      * Read through [requiresLosslessOutput].
      */
     @SerialName("checkValidLossless") val checkValidLossless: JsonElement? = null,
+    /**
+     * `catalogueProvider` — which catalogue this addon serves, when it says.
+     *
+     * An addon that publishes `apple-music` is an Apple Music manifest: the
+     * one kind of addon that also publishes a library, a home page and radio
+     * stations. Read as a plain string rather than as a nested object
+     * because that is the only shape any addon has used it in.
+     */
+    @SerialName("catalogueProvider") val catalogueProvider: String? = null,
+    /**
+     * `library` — the library collections this addon publishes, when it
+     * publishes any.
+     *
+     * Only the collection names are read. The rest of the block describes
+     * how a host should authenticate, and this app never authenticates to an
+     * addon: the addon holds the account itself.
+     */
+    @SerialName("library") val library: AddonLibraryDeclaration? = null,
 ) {
+    /**
+     * The catalogue this addon serves, as it was published.
+     *
+     * Kept as the raw string so the Apple check can be made against the
+     * manifest rather than against the addon's name or address.
+     */
+    val rawCatalogueProvider: String? get() = catalogueProvider
     val downloadsAllowed: Boolean get() = allowDownloads.asFlag() ?: true
 
     val requiresLosslessOutput: Boolean get() = checkValidLossless.asFlag() ?: false
@@ -97,6 +122,18 @@ data class AddonManifest(
     /** What to show when the user did not name the addon themselves. */
     val displayName: String get() = name.ifBlank { id }
 }
+
+/**
+ * The `library` block of a manifest, reduced to what this app reads.
+ *
+ * Only the collection names matter here: an Apple Music manifest publishes
+ * `playlists`, `albums` and `songs`, and the app asks for those by name.
+ */
+@Serializable
+data class AddonLibraryDeclaration(
+    @SerialName("provider") val provider: String? = null,
+    @SerialName("collections") val collections: List<String> = emptyList(),
+)
 
 /**
  * One declared setting, reduced to the things this app does with it.

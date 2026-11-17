@@ -349,6 +349,133 @@ object AppSettings {
     val homeProvider = MutableStateFlow(HomeProvider.YOUTUBE)
 
     /**
+     * The three provider axes, and what each one owns.
+     *
+     *  - [ProviderAxis.UI] — the look: which catalogue's design the screens
+     *    wear. Apple's layout over YouTube's rows is still YouTube's rows.
+     *  - [ProviderAxis.RECOMMENDATION] — the algorithm: what Home, Flow and
+     *    Autoplay suggest. It never decides where the audio comes from.
+     *  - [ProviderAxis.SOURCE] — the content: songs, metadata, lyrics and
+     *    artwork, and with them the catalogue id a track is known by.
+     *
+     * They are separate because every combination of them is legal, and
+     * because a listener who wants Apple's catalogue but Spotify's
+     * recommendations should not have to give either up.
+     *
+     * The master switch lives in the settings, not here: turning the whole
+     * app to Apple is three writes, one per axis.
+     */
+    val providerAxes = MutableStateFlow(
+        ProviderAxes(
+            ui = MusicProvider.YOUTUBE,
+            recommendation = MusicProvider.YOUTUBE,
+            source = MusicProvider.YOUTUBE,
+        ),
+    )
+
+    /**
+     * The provider on one axis.
+     *
+     * Read through this rather than through [providerAxes] where a single
+     * axis is meant: it is the only place the three are kept in step.
+     */
+    fun providerOn(axis: ProviderAxis): MusicProvider =
+        when (axis) {
+            ProviderAxis.UI -> providerAxes.value.ui
+            ProviderAxis.RECOMMENDATION -> providerAxes.value.recommendation
+            ProviderAxis.SOURCE -> providerAxes.value.source
+        }
+
+    /**
+     * Points one axis at a provider.
+     *
+     * Only that axis changes. The other two are left exactly as they were,
+     * which is the whole point of having three.
+     */
+    fun setProviderOn(axis: ProviderAxis, provider: MusicProvider) {
+        val current = providerAxes.value
+        val updated = when (axis) {
+            ProviderAxis.UI -> current.copy(ui = provider)
+            ProviderAxis.RECOMMENDATION -> current.copy(recommendation = provider)
+            ProviderAxis.SOURCE -> current.copy(source = provider)
+        }
+        if (updated == current) return
+        providerAxes.value = updated
+        persistProviderAxes(updated)
+    }
+
+    /**
+     * Points every axis at Apple Music — the master switch.
+     *
+     * One write, three axes: the listener asked for the whole app to be
+     * Apple's, and the app does not decide that only some of it may be.
+     */
+    fun setAllProviders(provider: MusicProvider) {
+        val updated = ProviderAxes(
+            ui = provider,
+            recommendation = provider,
+            source = provider,
+        )
+        if (updated == providerAxes.value) return
+        providerAxes.value = updated
+        persistProviderAxes(updated)
+    }
+
+    /**
+     * Whether every axis points at Apple Music.
+     *
+     * This is what the master switch shows, and what the Apple screens are
+     * drawn for.
+     */
+    val appleMasterOn: Boolean
+        get() = providerAxes.value.ui == MusicProvider.APPLE &&
+            providerAxes.value.recommendation == MusicProvider.APPLE &&
+            providerAxes.value.source == MusicProvider.APPLE
+
+    /** Whether the screens wear Apple's look. */
+    val appleUiSelected: Boolean
+        get() = providerAxes.value.ui == MusicProvider.APPLE
+
+    /** Whether discovery comes from Apple's algorithm. */
+    val appleRecommendationSelected: Boolean
+        get() = providerAxes.value.recommendation == MusicProvider.APPLE
+
+    /** Whether songs, metadata, lyrics and artwork come from Apple. */
+    val appleSourceSelected: Boolean
+        get() = providerAxes.value.source == MusicProvider.APPLE
+
+    /**
+     * Writes the three axes to the preferences.
+     *
+     * Committed rather than applied, because the caller may restart the
+     * process immediately afterwards and an async write that has not reached
+     * disk when the process dies is a switch that reports success and comes
+     * back on the old value.
+     */
+    /**
+     * The old single-provider choice, read as a provider id.
+     *
+     * The preference that predates the three axes stored an enum name:
+     * `YOUTUBE` or `SPOTIFY`. Reading it as a provider id keeps the
+     * listener's catalogue choice when the axes are first written.
+     */
+    private fun legacyProviderId(name: String?): String? = when (name) {
+        null -> null
+        "YOUTUBE" -> MusicProvider.YOUTUBE.id
+        "SPOTIFY" -> MusicProvider.SPOTIFY.id
+        "APPLE" -> MusicProvider.APPLE.id
+        else -> null
+    }
+
+    private fun persistProviderAxes(axes: ProviderAxes) {
+        prefs.edit()
+            .putString(KEY_PROVIDER_UI, axes.ui.id)
+            .putString(KEY_PROVIDER_RECOMMENDATION, axes.recommendation.id)
+            .putString(KEY_PROVIDER_SOURCE, axes.source.id)
+            .commit()
+    }
+
+    /**
      * The transition planner Automix runs.
      *
      * Pinned to the phrase-aware engine: the legacy plan it replaced is gone,
@@ -1587,6 +1714,21 @@ object AppSettings {
         // An unknown name lands on YouTube rather than on nothing: the provider
         // a listener never chose is the one that works without an account.
         homeProvider.value = HomeProvider.of(prefs.getString(KEY_HOME_PROVIDER, null))
+        // The three provider axes. An install that has them keeps them; an
+        // install that only has the old single provider keeps that choice on
+        // the source and recommendation axes, and starts on the default look
+        // — the old switch chose a catalogue, and a catalogue is not a skin.
+        providerAxes.value = ProviderAxes(
+            ui = MusicProvider.of(prefs.getString(KEY_PROVIDER_UI, null)),
+            recommendation = MusicProvider.of(
+                prefs.getString(KEY_PROVIDER_RECOMMENDATION, null)
+                    ?: legacyProviderId(prefs.getString(KEY_HOME_PROVIDER, null)),
+            ),
+            source = MusicProvider.of(
+                prefs.getString(KEY_PROVIDER_SOURCE, null)
+                    ?: legacyProviderId(prefs.getString(KEY_HOME_PROVIDER, null)),
+            ),
+        )
         // An install that still has the removed engine's name in its
         // preferences fails the lookup and lands on the one engine there is.
         automixEngine.value = runCatching {
@@ -3249,6 +3391,15 @@ object AppSettings {
     private const val KEY_AUTO_UPGRADE_LOCAL_STORAGE = "auto_upgrade_local_storage"
     private const val KEY_AUTOMIX_PERFORMANCE_MODE = "automix_performance_mode"
     private const val KEY_HOME_PROVIDER = "home_provider"
+
+    /** The catalogue look axis. */
+    private const val KEY_PROVIDER_UI = "provider_ui"
+
+    /** The discovery algorithm axis. */
+    private const val KEY_PROVIDER_RECOMMENDATION = "provider_recommendation"
+
+    /** The content source axis. */
+    private const val KEY_PROVIDER_SOURCE = "provider_source"
     private const val KEY_AUTOMIX_ENGINE = "automix_engine"
     private const val KEY_SKIP_SILENCE = "skip_silence"
     private const val KEY_OUTPUT_PCM_MODE = "output_pcm_mode"

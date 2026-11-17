@@ -56,7 +56,6 @@ internal fun PlaybackSettings(
     val crossfade by AppSettings.crossfadeSeconds.collectAsStateWithLifecycle()
     val smartFade by AppSettings.smartFadeEnabled.collectAsStateWithLifecycle()
     val automixPerformance by AppSettings.automixPerformanceMode.collectAsStateWithLifecycle()
-    val homeProvider by AppSettings.homeProvider.collectAsStateWithLifecycle()
     val skipSilence by AppSettings.skipSilence.collectAsStateWithLifecycle()
     val spatialAudio by AppSettings.spatialAudio.collectAsStateWithLifecycle()
     val simulatedAtmos by AppSettings.simulatedAtmos.collectAsStateWithLifecycle()
@@ -134,20 +133,11 @@ internal fun PlaybackSettings(
                 onClick = { sheets.pickingAutomixPerformance = true },
             )
         }
-        // The catalogue, next to the other decisions about how the app
-        // finds music for the listener. It sits here rather than with the
-        // account rows because it is a choice about where the page and
-        // the search come from, not about a service connection.
-        val homeProviderTitle = stringResource(R.string.home_provider)
-        row(homeProviderTitle, "provider", "spotify", "youtube", "search", "library") {
-            SettingsRow(
-                icon = Icons.Rounded.Tune,
-                title = homeProviderTitle,
-                subtitle = stringResource(R.string.home_provider_subtitle),
-                value = homeProvider.localizedLabel(),
-                onClick = { sheets.pickingHomeProvider = true },
-            )
-        }
+        // The catalogue choice is not a playback setting: it is a provider
+        // axis, and it lives on the Provider page where the other two axes
+        // are. It used to sit here, next to the other decisions about how
+        // the app finds music, which made one of the three axes look like
+        // the only one that existed.
         val skipSilenceTitle = stringResource(R.string.skip_silence)
         row(skipSilenceTitle, "silence") {
             SettingsRow(

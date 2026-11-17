@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.R
 import com.music.bitchord.data.settings.AppSettings
+import com.music.bitchord.data.settings.ProviderAxis
 import com.music.bitchord.playback.AudioCache
 import com.music.bitchord.util.AppRelaunch
 
@@ -40,6 +41,14 @@ internal class SettingsSheets {
     var pickingDownloadQuality by mutableStateOf(false)
     var pickingAutomixPerformance by mutableStateOf(false)
     var pickingHomeProvider by mutableStateOf(false)
+    /**
+     * The provider axis being pointed at a provider, or null.
+     *
+     * One sheet for all three axes rather than three flags: the sheet reads
+     * the axis it is for, and a flag per axis would be three ways of asking
+     * the same question.
+     */
+    var pickingProviderAxis by mutableStateOf<ProviderAxis?>(null)
     var confirmImport by mutableStateOf(false)
     var confirmClearSongCache by mutableStateOf(false)
     var showBlockedArtists by mutableStateOf(false)
@@ -159,6 +168,26 @@ internal fun SettingsDialogs(
                         AppSettings.setHomeProvider(provider)
                         AppRelaunch.relaunch(context)
                     }
+                },
+            )
+        }
+    }
+
+    sheets.pickingProviderAxis?.let { axis ->
+        val axes by AppSettings.providerAxes.collectAsStateWithLifecycle()
+        ModalBottomSheet(
+            onDismissRequest = { sheets.pickingProviderAxis = null },
+            containerColor = MaterialTheme.colorScheme.background,
+        ) {
+            ProviderAxisSheet(
+                axis = axis,
+                selected = axes.on(axis),
+                onSelect = { provider ->
+                    // Only the axis being edited changes. The other two are
+                    // left exactly as they were: a mixed app is a legal app,
+                    // and the master switch is the way to make it uniform.
+                    AppSettings.setProviderOn(axis, provider)
+                    sheets.pickingProviderAxis = null
                 },
             )
         }
