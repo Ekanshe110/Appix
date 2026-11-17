@@ -30,7 +30,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.foundation.gestures.awaitPointerEvent
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,7 +41,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -630,14 +634,21 @@ private fun Modifier.qualityBadgeGestures(
     val tap by rememberUpdatedState(onTap)
     return pointerInput(Unit) {
         awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false)
-            // Null when the finger came up before the hold was long enough —
-            // which is a tap, and means the switch.
-            val held = awaitLongPressOrCancellation(
-                pointerId = down.id,
-                durationMillis = QUALITY_STATS_HOLD_MS,
-            )
-            if (held != null) hold() else tap()
+            awaitFirstDown(requireUnconsumed = false)
+            // Wait for the finger to come up.  A timeout means it was held
+            // for the whole second, which is the hold; an early release is a
+            // tap.
+            val released = try {
+                withTimeout(QUALITY_STATS_HOLD_MS) {
+                    awaitPointerEvent(PointerEventPass.Main) { event ->
+                        event.changes.any { it.changedToUpIgnoreConsumed() }
+                    }
+                }
+                true
+            } catch (timeout: TimeoutCancellationException) {
+                false
+            }
+            if (released) tap() else hold()
         }
     }
 }
