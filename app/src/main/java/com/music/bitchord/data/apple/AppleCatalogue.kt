@@ -9,6 +9,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 /**
@@ -364,11 +365,11 @@ object AppleCatalogue {
         }
     }
 
-    private suspend fun <T> postForm(
+    private suspend fun postForm(
         baseUrl: String,
         segments: List<String>,
         fields: Map<String, String>,
-    ): Result<T> = withContext(Dispatchers.IO) {
+    ): Result<AppleWriteResponse> = withContext(Dispatchers.IO) {
         runCatching {
             val body = fields.entries.joinToString("&") { (key, value) ->
                 "${key.urlEncode()}=${value.urlEncode()}"
@@ -387,11 +388,11 @@ object AppleCatalogue {
         }
     }
 
-    private suspend fun <T> deleteForm(
+    private suspend fun deleteForm(
         baseUrl: String,
         segments: List<String>,
         fields: Map<String, String>,
-    ): Result<T> = withContext(Dispatchers.IO) {
+    ): Result<AppleWriteResponse> = withContext(Dispatchers.IO) {
         runCatching {
             val body = fields.entries.joinToString("&") { (key, value) ->
                 "${key.urlEncode()}=${value.urlEncode()}"
@@ -425,9 +426,6 @@ object AppleCatalogue {
 
     private fun String.urlEncode(): String =
         java.net.URLEncoder.encode(this, "UTF-8")
-
-    private fun String.toRequestBody(mediaType: String? = null) =
-        okhttp3.RequestBody.create(mediaType ?: "text/plain", this)
 }
 
 /** A failure that came from the Apple side rather than from the app. */

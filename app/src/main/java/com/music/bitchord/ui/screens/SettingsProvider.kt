@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Apple
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.HorizontalDivider
@@ -83,7 +83,7 @@ internal fun ProviderSettings(
         val masterTitle = stringResource(R.string.provider_apple_master)
         row(masterTitle, "apple", "master", "provider", "everything") {
             SettingsRow(
-                icon = Icons.Rounded.Apple,
+                icon = Icons.Rounded.MusicNote,
                 title = masterTitle,
                 subtitle = stringResource(R.string.provider_apple_master_subtitle),
                 trailing = {
@@ -147,7 +147,7 @@ internal fun ProviderSettings(
             val noteTitle = stringResource(R.string.provider_apple_manifest_missing_title)
             row(noteTitle, "apple", "manifest", "install", "addon", "missing") {
                 SettingsRow(
-                    icon = Icons.Rounded.Apple,
+                    icon = Icons.Rounded.MusicNote,
                     title = noteTitle,
                     subtitle = stringResource(R.string.provider_apple_manifest_missing_subtitle),
                 )
