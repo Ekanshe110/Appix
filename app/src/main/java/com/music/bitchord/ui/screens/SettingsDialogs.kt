@@ -23,7 +23,6 @@ import com.music.bitchord.R
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.ProviderAxis
 import com.music.bitchord.playback.AudioCache
-import com.music.bitchord.util.AppRelaunch
 
 /**
  * Which of the settings screen's sheets and dialogs is open.
@@ -151,26 +150,7 @@ internal fun SettingsDialogs(
     }
 
     if (sheets.pickingHomeProvider) {
-        val homeProvider by AppSettings.homeProvider.collectAsStateWithLifecycle()
-        ModalBottomSheet(
-            onDismissRequest = { sheets.pickingHomeProvider = false },
-            containerColor = MaterialTheme.colorScheme.background,
-        ) {
-            HomeProviderSheet(
-                selected = homeProvider,
-                onSelect = { provider ->
-                    sheets.pickingHomeProvider = false
-                    if (provider != homeProvider) {
-                        // Written before the restart so the new process reads it,
-                        // and the restart is what makes it total: Flow's and
-                        // Autoplay's learning were trained against the provider
-                        // being left behind. See [HomeProvider] and [AppRelaunch].
-                        AppSettings.setHomeProvider(provider)
-                        AppRelaunch.relaunch(context)
-                    }
-                },
-            )
-        }
+        HomeProviderPicker(onDismiss = { sheets.pickingHomeProvider = false })
     }
 
     sheets.pickingProviderAxis?.let { axis ->

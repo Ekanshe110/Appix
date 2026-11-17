@@ -402,6 +402,49 @@ object AppSettings {
         if (updated == current) return
         providerAxes.value = updated
         persistProviderAxes(updated)
+        // The recommendation axis names the catalogue Home is drawn from, and
+        // the older single setting is what the rest of the app still reads.
+        // The two are kept in step, so a page cannot be YouTube's while the
+        // axes say Spotify's.
+        if (axis == ProviderAxis.RECOMMENDATION) {
+            mirrorCatalogue(provider)
+        }
+    }
+
+    /**
+     * Points the catalogue at a service, in the two axes that name one.
+     *
+     * Upstream's catalogue card chooses the service that Home and Search come
+     * from. In this app that is two axes — recommendations and source — so
+     * both are pointed at it, and the older single setting follows.
+     */
+    fun setCatalogue(provider: MusicProvider) {
+        val current = providerAxes.value
+        val updated = current.copy(recommendation = provider, source = provider)
+        if (updated != current) {
+            providerAxes.value = updated
+            persistProviderAxes(updated)
+        }
+        mirrorCatalogue(provider)
+    }
+
+    /**
+     * Keeps the older single-catalogue setting in step with an axis.
+     *
+     * Apple is left alone: Flow and Autoplay are YouTube Music's whichever
+     * catalogue is chosen, and that training belongs to the last service the
+     * listener actually used.
+     */
+    private fun mirrorCatalogue(provider: MusicProvider) {
+        when (provider) {
+            MusicProvider.YOUTUBE -> if (homeProvider.value != HomeProvider.YOUTUBE) {
+                setHomeProvider(HomeProvider.YOUTUBE)
+            }
+            MusicProvider.SPOTIFY -> if (homeProvider.value != HomeProvider.SPOTIFY) {
+                setHomeProvider(HomeProvider.SPOTIFY)
+            }
+            MusicProvider.APPLE -> Unit
+        }
     }
 
     /**
@@ -419,6 +462,7 @@ object AppSettings {
         if (updated == providerAxes.value) return
         providerAxes.value = updated
         persistProviderAxes(updated)
+        mirrorCatalogue(provider)
     }
 
     /**

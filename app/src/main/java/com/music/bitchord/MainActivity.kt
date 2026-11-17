@@ -14,6 +14,7 @@ import android.os.SystemClock
 import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.ReportDrawnWhen
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -806,6 +807,12 @@ private fun BitChordApp(
     SystemBarIcons(dark = !darkTheme && !showNowPlaying && !nav.showReplay && nav.replayStory == null)
 
     val homeState by viewModel.home.collectAsStateWithLifecycle()
+    // Time to full display is the home page with shelves on it, not the
+    // skeleton: reported once, on the first frame with shelves on it — last
+    // launch's cached page when there is one, the fresh feed otherwise — so
+    // `Fully drawn` in logcat (and Macrobenchmark's TTFD) is the number a
+    // listener waits for. A no-op on every later frame.
+    ReportDrawnWhen { homeState is UiState.Success }
     // The podcast pages that sit over the feed — see [PodcastUiState].
     val podcastUi = remember { PodcastUiState() }
     // Podcasts switched off while their page is open: the tab is gone, so the
@@ -7125,7 +7132,19 @@ private fun RootOverlays(
                 sheets.showAccountSelector = false
                 onOpenSettings()
             },
+            onMusicCatalogue = {
+                sheets.showAccountSelector = false
+                sheets.pickingMusicCatalogue = true
+            },
             onDismiss = { sheets.showAccountSelector = false },
+        )
+    }
+
+    // The catalogue picker the account sheet opens: the same sheet and the
+    // same restart as the card at the top of Settings.
+    if (sheets.pickingMusicCatalogue) {
+        com.music.bitchord.ui.screens.HomeProviderPicker(
+            onDismiss = { sheets.pickingMusicCatalogue = false },
         )
     }
 
@@ -7799,6 +7818,7 @@ internal class RootSheets {
     var showAppLanguage by mutableStateOf(false)
     var showTranslationLanguage by mutableStateOf(false)
     var showAccountSelector by mutableStateOf(false)
+    var pickingMusicCatalogue by mutableStateOf(false)
     var showListenBrainzLogin by mutableStateOf(false)
     var showLastfmLogin by mutableStateOf(false)
     var showWebDavEditor by mutableStateOf(false)

@@ -169,6 +169,9 @@
     <string name="apple_home_empty">Apple Music returned nothing to show</string>
     <string name="apple_radio_empty">Apple Music returned no stations</string>
     <string name="apple_library_empty">Your Apple Music library has no playlists in it</string>
+    <string name="music_catalogue">Music catalogue</string>
+    <string name="music_catalogue_row">Spotify or YouTube Music</string>
+    <string name="music_catalogue_row_subtitle">Where Home and Search come from</string>
     <string name="account_scrobbling">Account &amp; scrobbling</string>
     <string name="rich_presence">Rich presence</string>
     <string name="scrobbling">Scrobbling</string>

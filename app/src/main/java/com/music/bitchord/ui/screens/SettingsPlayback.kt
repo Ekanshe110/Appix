@@ -44,6 +44,7 @@ import com.music.bitchord.data.NerdStats
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.AutomixPerformanceMode
 import com.music.bitchord.data.settings.HomeProvider
+import com.music.bitchord.data.settings.MusicProvider
 import com.music.bitchord.playback.AudioOutputStatus
 import kotlin.math.roundToInt
 
@@ -282,9 +283,9 @@ private fun AutomixPerformanceMode.localizedLabel(): String = stringResource(
     },
 )
 
-/** The selected content provider, as the settings row shows it. */
+/** The selected content provider, as the catalogue rows show it. */
 @Composable
-private fun HomeProvider.localizedLabel(): String = stringResource(
+internal fun HomeProvider.localizedLabel(): String = stringResource(
     when (this) {
         HomeProvider.YOUTUBE -> R.string.home_provider_youtube
         HomeProvider.SPOTIFY -> R.string.spotify
@@ -305,8 +306,8 @@ private fun HomeProvider.localizedLabel(): String = stringResource(
  */
 @Composable
 internal fun HomeProviderSheet(
-    selected: HomeProvider,
-    onSelect: (HomeProvider) -> Unit,
+    selected: MusicProvider,
+    onSelect: (MusicProvider) -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
     Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
@@ -335,7 +336,7 @@ internal fun HomeProviderSheet(
                 .weight(1f, fill = false)
                 .verticalScroll(rememberScrollState()),
         ) {
-            HomeProvider.entries.forEach { provider ->
+            MusicProvider.entries.forEach { provider ->
                 val chosen = provider == selected
                 Row(
                     modifier = Modifier
@@ -356,8 +357,9 @@ internal fun HomeProviderSheet(
                         Text(
                             text = stringResource(
                                 when (provider) {
-                                    HomeProvider.YOUTUBE -> R.string.home_provider_youtube_subtitle
-                                    HomeProvider.SPOTIFY -> R.string.home_provider_spotify_subtitle
+                                    MusicProvider.YOUTUBE -> R.string.home_provider_youtube_subtitle
+                                    MusicProvider.SPOTIFY -> R.string.home_provider_spotify_subtitle
+                                    MusicProvider.APPLE -> R.string.provider_apple_subtitle
                                 },
                             ),
                             style = MaterialTheme.typography.bodyMedium,
