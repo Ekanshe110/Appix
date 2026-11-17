@@ -146,9 +146,10 @@ private fun AppleStationRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (!station.subtitle.isNullOrBlank()) {
+            val subtitle = station.subtitle
+            if (!subtitle.isNullOrBlank()) {
                 Text(
-                    text = station.subtitle,
+                    text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

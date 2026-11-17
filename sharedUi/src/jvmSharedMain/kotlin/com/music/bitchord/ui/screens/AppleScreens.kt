@@ -41,6 +41,7 @@ import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.UiState
 import com.music.bitchord.data.model.artworkAt
+import com.music.bitchord.ui.components.longPressMenuClickable
 import com.music.bitchord.ui.components.MessageState
 import com.music.bitchord.ui.components.PAGE_GUTTER
 import com.music.bitchord.ui.components.PullToRefresh
@@ -278,7 +279,7 @@ private fun AppleGridCard(
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .then(
                     if (item != null) {
-                        Modifier.clickable(
+                        Modifier.longPressMenuClickable(
                             onClick = { onClick(item) },
                             onLongClick = onLongPress?.let { { it(item) } },
                         )
@@ -327,7 +328,7 @@ private fun AppleExploreRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(
+            .longPressMenuClickable(
                 onClick = { onClick(item) },
                 onLongClick = onLongPress?.let { { it(item) } },
             )
