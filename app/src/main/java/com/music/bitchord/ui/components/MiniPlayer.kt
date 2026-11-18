@@ -105,8 +105,6 @@ private val GLYPH_SIZE = 32.dp
 /** The spinner that stands in for the play glyph, kept in proportion to it. */
 private val SPINNER_SIZE = 22.dp
 
-/** The stop square of a live station, where the play glyph would be. */
-private val STOP_GLYPH_SIZE = 20.dp
 
 /**
  * The gap between the two transport controls.
@@ -565,36 +563,7 @@ fun MiniPlayer(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // A live station is a broadcast, not a track: it is stopped, not
-            // paused, and Apple's own mini player draws a stop square in
-            // place of the play glyph.
-            val liveRadio = song.liveStreamUrl != null
-            val stopLabel = stringResource(R.string.stop)
-            if (liveRadio) {
-                IconButton(
-                    onClick = {
-                        haptics.play(Haptic.Pause)
-                        onPlayPause()
-                    },
-                    modifier = Modifier.size(GLYPH_SLOT),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(STOP_GLYPH_SIZE)
-                            .clearAndSetSemantics {
-                                contentDescription = stopLabel
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(MaterialTheme.colorScheme.onBackground),
-                        )
-                    }
-                }
-            } else if (isLoading) {
+            if (isLoading) {
                 Box(Modifier.size(GLYPH_SLOT), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.onBackground,

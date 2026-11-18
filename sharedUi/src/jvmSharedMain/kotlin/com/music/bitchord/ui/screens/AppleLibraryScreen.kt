@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.music.bitchord.data.model.AppleLibraryContent
+import kotlinx.coroutines.launch
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.ShelfItem
@@ -73,6 +75,7 @@ fun AppleLibraryScreen(
     contentPadding: PaddingValues,
     title: String? = null,
 ) {
+    val scope = rememberCoroutineScope()
     PullToRefresh(
         refreshing = refreshing,
         onRefresh = onRefresh,
@@ -110,6 +113,44 @@ fun AppleLibraryScreen(
                 }
                 is UiState.Success -> {
                     val content = page.data
+                    // Where each part of the page begins, so the rows at the
+                    // head of it can take the listener there. Apple's own
+                    // library opens with the sections themselves.
+                    val titleRows = if (title != null) 1 else 0
+                    val recentRows = content.recentlyAdded.chunked(2)
+                    // Where the page stands after each part, so the rows at
+                    // the head of it can take the listener to the right one.
+                    var at = titleRows + 1
+                    val recentIndex = if (content.recentlyAdded.isNotEmpty()) at + 1 else -1
+                    if (content.recentlyAdded.isNotEmpty()) at += 1 + recentRows.size
+                    val albumsIndex = if (content.albums.isNotEmpty()) at + 1 else -1
+                    if (content.albums.isNotEmpty()) at += 2
+                    val songsIndex = if (content.songs.isNotEmpty()) at + 1 else -1
+                    if (content.songs.isNotEmpty()) at += 1 + content.songs.size
+                    val playlistsIndex = if (content.playlists.isNotEmpty()) at + 1 else -1
+                    // The categories, in Apple's own order and wording.
+                    item(key = "apple-library:categories") {
+                        Column {
+                            if (playlistsIndex >= 0) {
+                                AppleLibraryCategoryRow(
+                                    label = stringResource(Res.string.apple_playlists),
+                                    onClick = { scope.launch { listState.animateScrollToItem(playlistsIndex) } },
+                                )
+                            }
+                            if (albumsIndex >= 0) {
+                                AppleLibraryCategoryRow(
+                                    label = stringResource(Res.string.apple_albums),
+                                    onClick = { scope.launch { listState.animateScrollToItem(albumsIndex) } },
+                                )
+                            }
+                            if (songsIndex >= 0) {
+                                AppleLibraryCategoryRow(
+                                    label = stringResource(Res.string.apple_songs),
+                                    onClick = { scope.launch { listState.animateScrollToItem(songsIndex) } },
+                                )
+                            }
+                        }
+                    }
                     if (content.recentlyAdded.isNotEmpty()) {
                         item(key = "apple-library:recent-header") {
                             AppleSectionHeader(stringResource(Res.string.apple_recently_added))
@@ -176,6 +217,36 @@ fun AppleLibraryScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * One of the library's categories, the way Apple's own library heads its
+ * page: a row that says what is in it and takes the listener there.
+ */
+@Composable
+private fun AppleLibraryCategoryRow(
+    label: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = PAGE_GUTTER, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = "\u203A",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

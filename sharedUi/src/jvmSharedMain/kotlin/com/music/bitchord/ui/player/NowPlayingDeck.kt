@@ -187,7 +187,6 @@ internal fun PortraitControlDeck(
             }
             val transitionWindow by PlayerSettings.smartTransitionWindow.collectAsStateWithLifecycle()
             PlayerScrubber(
-                liveRadio = song.liveStreamUrl != null,
                 shown = shown,
                 durationMs = durationMs,
                 loading = versionSwitching,
@@ -230,8 +229,6 @@ internal fun PortraitControlDeck(
             TransportRow(
                 isPlaying = isPlaying,
                 isLoading = isLoading || audioVersionSwitching,
-                // A live station has no track to step through.
-                liveRadio = song.liveStreamUrl != null,
                 previousEnabled = previousEnabled,
                 nextEnabled = nextEnabled,
                 onPrevious = onPrevious,

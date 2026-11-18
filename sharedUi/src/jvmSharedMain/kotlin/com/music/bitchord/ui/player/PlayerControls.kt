@@ -269,16 +269,6 @@ internal fun PlayerScrubber(
      */
     shown: () -> Float,
     durationMs: Long,
-    /**
-     * A live station is playing.
-     *
-     * A live stream has no length: there is no position to show and nothing
-     * to seek to, so the bar is replaced by the LIVE line Apple's own player
-     * draws. Said by the caller, because only the caller knows the row is a
-     * live station — a track whose duration has not arrived yet is a track
-     * with no duration, not a broadcast.
-     */
-    liveRadio: Boolean = false,
     /** A version switch's wait, drawn along the bar — see [ThinSlider.loading]. */
     loading: Boolean,
     /** An analysed Automix handoff, drawn as a travelling sheen. */
@@ -295,13 +285,6 @@ internal fun PlayerScrubber(
     val shown = shown()
     val ink = LocalPlayerAccent.current ?: LocalPlayerInk.current.value
     val alphas = LocalPlayerAlphas.current
-    // A live stream has no length to scrub through: Apple's own player draws
-    // two lines with LIVE between them instead of a bar and two times, and
-    // there is nothing here to seek to either.
-    if (liveRadio) {
-        LiveBar(ink = ink)
-        return
-    }
     // Held as a State and read only inside the bar's draw: the blend republishes
     // every fade tick, and collecting it by value here would recompose the
     // scrubber and its labels thirty times a second for a change only the
@@ -495,46 +478,6 @@ private const val BAR_OPACITY = 0.81f
  */
 private const val VOLUME_BAR_OPACITY = 0.49f
 
-
-/**
- * The live station's own line: two rules with LIVE between them.
- *
- * A live stream has no length, so there is no position to show and nothing
- * to seek to. Apple's own player says LIVE between two lines instead, and
- * this is that.
- */
-@Composable
-private fun LiveBar(ink: Color) {
-    val alphas = LocalPlayerAlphas.current
-    val ruleColor = ink.copy(alpha = alphas.primary * BAR_OPACITY)
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(2.dp)
-                .background(ruleColor, RoundedCornerShape(1.dp)),
-        )
-        Text(
-            text = stringResource(Res.string.live),
-            style = MaterialTheme.typography.labelMedium.copy(
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp,
-            ),
-            color = ink.copy(alpha = alphas.primary),
-        )
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(2.dp)
-                .background(ruleColor, RoundedCornerShape(1.dp)),
-        )
-    }
-}
 
 /**
  * The elapsed and remaining times, which the reference player keeps quiet.
@@ -973,14 +916,6 @@ internal fun TransportRow(
     /** While the stream resolves and buffers, the play glyph would be a lie. */
     isLoading: Boolean,
     /**
-     * A live station is playing.
-     *
-     * There is no track to skip through and no track to pause: a live stream
-     * is one continuous broadcast, and Apple's own player offers a single
-     * stop for it in place of the three transport buttons.
-     */
-    liveRadio: Boolean = false,
-    /**
      * Lit whenever back has something to do — a track to step to, or enough
      * elapsed to restart this one. Faded and inert, not removed, while a party
      * host holds the controls: the transport keeps its shape either way.
@@ -1023,16 +958,6 @@ internal fun TransportRow(
     val playSize = 30.dp
     val playTouch = if (compact) 76.dp else 92.dp
     val skipSize = if (compact) 44.dp else PLAYER_SKIP_ICON_SIZE
-    // A live station has one control and it is a stop: the broadcast either
-    // runs or it does not, and there is nothing before it or after it to
-    // step to.
-    if (liveRadio) {
-        LiveStopButton(
-            onClick = onPlayPause,
-            modifier = modifier,
-        )
-        return
-    }
     Row(
         // The gap that puts the three buttons' centres 263px apart on a
         // 1080px screen, as the reference does: the boxes are 53dp and 92dp,
@@ -1088,84 +1013,6 @@ internal fun TransportRow(
     }
 }
 
-
-/**
- * The stop of a live station.
- *
- * One white square, the way Apple's own live player draws it: the broadcast
- * is stopped, not paused, because there is no track to come back to.
- */
-@Composable
-private fun LiveStopButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val ink = LocalPlayerAccent.current ?: LocalPlayerInk.current.value
-    Box(
-        modifier = modifier
-            .size(36.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(ink)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(14.dp)
-                .background(Color.Black, RoundedCornerShape(2.dp)),
-        )
-    }
-}
-
-/** The volume bar between its two speaker glyphs. */
-@Composable
-internal fun VolumeRow(
-    /**
-     * Read inside the row, so the level's tween recomposes the row alone rather
-     * than the whole player around it.
-     */
-    value: () -> Float,
-    onValueChange: (Float) -> Unit,
-    onValueChangeFinished: () -> Unit,
-) {
-    val ink = LocalPlayerAccent.current ?: LocalPlayerInk.current.value
-    val alphas = LocalPlayerAlphas.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            painter = PlayerIcons.VolumeLow.painter(),
-            contentDescription = null,
-            tint = ink.copy(alpha = alphas.tertiary),
-            modifier = Modifier
-                .size(VOLUME_ICON_SIZE),
-        )
-        Spacer(Modifier.width(10.dp))
-        ThinSlider(
-            value = value(),
-            onValueChange = onValueChange,
-            onValueChangeFinished = onValueChangeFinished,
-            // Thinner than the seek bar, and thinner than it used to be: the
-            // volume row is a courtesy under the transport, and at the seek
-            // bar's weight it read as a second progress bar.
-            idleHeight = VOLUME_IDLE_HEIGHT,
-            activeHeight = VOLUME_ACTIVE_HEIGHT,
-            activeColor = (LocalPlayerSeekbar.current ?: ink).copy(alpha = alphas.primary * VOLUME_BAR_OPACITY),
-            inactiveColor = (LocalPlayerSeekbar.current ?: ink).copy(alpha = alphas.track),
-            markerColor = (LocalPlayerSeekbar.current ?: ink).copy(alpha = alphas.primary * VOLUME_BAR_OPACITY),
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(10.dp))
-        Icon(
-            painter = PlayerIcons.VolumeHigh.painter(),
-            contentDescription = null,
-            tint = ink.copy(alpha = alphas.tertiary),
-            modifier = Modifier
-                .size(VOLUME_ICON_SIZE),
-        )
-    }
-}
 
 /**
  * The speakers either side of the volume bar.

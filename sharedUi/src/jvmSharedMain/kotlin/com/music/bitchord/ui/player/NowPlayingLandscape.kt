@@ -336,8 +336,7 @@ internal fun LandscapeNowPlaying(
                     },
                     scrubber = {
                         PlayerScrubber(
-                            liveRadio = song.liveStreamUrl != null,
-                            shown = shown,
+                                        shown = shown,
                             durationMs = durationMs,
                             loading = versionAligning || audioVersionSwitching,
                             mixing = mixing() && !scrub.scrubbing,
@@ -364,9 +363,7 @@ internal fun LandscapeNowPlaying(
                         TransportRow(
                             isPlaying = isPlaying,
                             isLoading = isLoading || audioVersionSwitching,
-                            // A live station has no track to step through.
-                            liveRadio = song.liveStreamUrl != null,
-                            previousEnabled = !controlsLocked &&
+                                                    previousEnabled = !controlsLocked &&
                                 (hasPrevious || pastRestartPoint()),
                             nextEnabled = !controlsLocked && hasNext,
                             onPrevious = onPrevious,
