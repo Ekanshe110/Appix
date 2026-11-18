@@ -569,6 +569,7 @@ fun MiniPlayer(
             // paused, and Apple's own mini player draws a stop square in
             // place of the play glyph.
             val liveRadio = song.liveStreamUrl != null
+            val stopLabel = stringResource(R.string.stop)
             if (liveRadio) {
                 IconButton(
                     onClick = {
@@ -581,7 +582,7 @@ fun MiniPlayer(
                         modifier = Modifier
                             .size(STOP_GLYPH_SIZE)
                             .clearAndSetSemantics {
-                                contentDescription = stringResource(R.string.stop)
+                                contentDescription = stopLabel
                             },
                         contentAlignment = Alignment.Center,
                     ) {
