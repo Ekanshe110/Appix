@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -134,42 +135,19 @@ fun AppleHomeScreen(
                             )
                         }
                     }
-                    // The grid: two columns of cards, the way Apple's own page
-                    // draws them.
-                    val grid = shelves.filter { it !== hero }.take(4)
-                    if (grid.isNotEmpty()) {
-                        item(key = "apple:grid") {
-                            AppleShelfGrid(
-                                shelves = grid,
-                                onItemClick = onItemClick,
-                                onItemLongPress = onItemLongPress,
-                            )
-                        }
-                    }
-                    // Everything else, as a plain list under "More to Explore".
-                    val rest = shelves.filter { it !== hero }.drop(4)
-                    if (rest.isNotEmpty()) {
-                        item(key = "apple:more-header") {
-                            Text(
-                                text = stringResource(Res.string.more_to_explore),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier.padding(
-                                    start = PAGE_GUTTER,
-                                    end = PAGE_GUTTER,
-                                    top = 18.dp,
-                                    bottom = 8.dp,
-                                ),
-                            )
-                        }
-                        items(rest, key = { "apple:shelf:${it.title}" }) { shelf ->
-                            AppleExploreRow(
-                                item = shelf.items.firstOrNull() ?: return@items,
-                                shelfTitle = shelf.title,
-                                onClick = { item -> onItemClick(item, shelf.title) },
-                                onLongPress = onItemLongPress,
-                            )
-                        }
+                    // Every other group of Apple's, each as its own row: a
+                    // heading over a horizontal run of square cards. That is
+                    // the shape Apple's own page draws — one row per group,
+                    // scrolled sideways, not a grid of everything at once.
+                    items(
+                        shelves.filter { it !== hero },
+                        key = { "apple:shelf:${it.title}" },
+                    ) { shelf ->
+                        AppleShelfCarousel(
+                            shelf = shelf,
+                            onItemClick = onItemClick,
+                            onItemLongPress = onItemLongPress,
+                        )
                     }
                 }
             }
@@ -241,15 +219,94 @@ fun AppleBrowseScreen(
                     )
                 }
                 is UiState.Success -> {
-                    val shelves = page.data
-                    if (shelves.isNotEmpty()) {
-                        item(key = "apple-browse:grid") {
-                            AppleShelfGrid(
-                                shelves = shelves,
-                                onItemClick = onItemClick,
-                                onItemLongPress = onItemLongPress,
-                            )
-                        }
+                    // Apple's browse page is a run of groups, each a heading
+                    // over a horizontal row of square cards.
+                    items(
+                        page.data,
+                        key = { "apple-browse:shelf:${it.title}" },
+                    ) { shelf ->
+                        AppleShelfCarousel(
+                            shelf = shelf,
+                            onItemClick = onItemClick,
+                            onItemLongPress = onItemLongPress,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One group of Apple's, as its own row.
+ *
+ * A heading over a horizontal run of square cards — the shape every group
+ * on Apple's own page has. The heading carries the chevron Apple's headings
+ * carry, because the row is a way into the group and not a dead end.
+ */
+@Composable
+private fun AppleShelfCarousel(
+    shelf: HomeShelf,
+    onItemClick: (ShelfItem, String) -> Unit,
+    onItemLongPress: ((ShelfItem) -> Unit)?,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = shelf.title,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(
+                start = PAGE_GUTTER,
+                end = PAGE_GUTTER,
+                top = 18.dp,
+                bottom = 8.dp,
+            ),
+        )
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            items(shelf.items, key = { "apple:card:${it.videoId ?: it.title}" }) { item ->
+                Column(
+                    modifier = Modifier.width(150.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .longPressMenuClickable(
+                                onClick = { onItemClick(item, shelf.title) },
+                                onLongClick = onItemLongPress?.let { { it(item) } },
+                            ),
+                    ) {
+                        AsyncImage(
+                            model = item.thumbnailUrl?.artworkAt(CARD_ART_PX),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (item.subtitle.isNotBlank()) {
+                        Text(
+                            text = item.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
             }
