@@ -4642,8 +4642,19 @@ class PlaybackService : MediaLibraryService() {
         // has no `v`, so its pin was never cleared here and a track that died
         // on a substituted stream kept being served the same dead URL for the
         // whole of the pin's life.
+        //
+        // Only when the track never became audible. A URL a source cannot
+        // serve fails on the first byte, so that is the shape this refusal is
+        // for. A track that played for two and a half minutes and then hit the
+        // end of its *cache entry* is a different failure wearing the same
+        // error code: the source was fine, the bytes on disk were short. It
+        // used to be read as a dead substitution, so the module was refused,
+        // the retry had nothing left to resolve (YouTube being off), and the
+        // track stayed dead for the rest of the session even though a fresh
+        // fetch would have played it — observed on an ALAC copy cached to
+        // 2:39 of a 4:29 track.
         uri?.let { mediaIdIn(it) }
-            ?.takeIf { diedOnModuleStream || StreamChoice.isSubstitute(it) }
+            ?.takeIf { neverStarted && (diedOnModuleStream || StreamChoice.isSubstitute(it)) }
             ?.let { videoId ->
                 StreamChoice.refuseSubstitutes(videoId)
                 TrackLog.w(
