@@ -1364,9 +1364,17 @@ class PlaybackService : MediaLibraryService() {
             eventTime: AnalyticsListener.EventTime,
             keyRequestInfo: KeyRequestInfo,
         ) {
+            // What the request actually named: the license servers it went
+            // to, and how many scheme datas carried init data. A session that
+            // reports no scheme data here is the "Media does not support
+            // uuid" failure one step earlier.
+            val servers = keyRequestInfo.loadInfos
+                .map { it.dataSpec.uri.toString() }
+                .distinct()
             TrackLog.i(
                 "DRM",
-                "keys loaded request=${keyRequestInfo.requestId} uri=${keyRequestInfo.uri}",
+                "keys loaded schemes=${keyRequestInfo.schemeDatas?.size ?: 0} " +
+                    "servers=$servers",
                 about = eventTime.mediaId(),
             )
         }
