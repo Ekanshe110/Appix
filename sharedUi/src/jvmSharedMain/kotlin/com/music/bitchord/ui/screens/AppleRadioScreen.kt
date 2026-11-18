@@ -316,7 +316,12 @@ private fun AppleStationCarousel(
                 browseId = station.browseId,
             )
         },
-        onRowClick = { row -> onStationClick(station) },
+        onRowClick = { row ->
+            // The row is the station itself, so the station's own click is
+            // what happens: a playlist opens as a page, a station plays.
+            val original = stations.firstOrNull { it.id == row.id }
+            if (original != null) onStationClick(original)
+        },
     )
 }
 
