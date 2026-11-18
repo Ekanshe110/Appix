@@ -61,6 +61,14 @@ internal fun SystemLogSheet(onDismiss: () -> Unit) {
         working = false
     }
 
+    // Read once, here: a composable call cannot be made from inside the
+    // coroutine that copies or shares the report.
+    val copyLabel = stringResource(R.string.system_log_copy)
+    val shareLabel = stringResource(R.string.system_log_share)
+    val withoutSystemLabel = stringResource(R.string.system_log_without_system)
+    val withSystemLabel = stringResource(R.string.system_log_with_system)
+    val shareChooser = stringResource(R.string.system_log_share)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.background,
@@ -92,7 +100,7 @@ internal fun SystemLogSheet(onDismiss: () -> Unit) {
                         onDismiss()
                     }
                 }) {
-                    Text(stringResource(R.string.system_log_copy))
+                    Text(copyLabel)
                 }
                 TextButton(onClick = {
                     val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
@@ -102,18 +110,14 @@ internal fun SystemLogSheet(onDismiss: () -> Unit) {
                     }
                     runCatching {
                         context.startActivity(
-                            android.content.Intent.createChooser(send, stringResource(R.string.system_log_share))
+                            android.content.Intent.createChooser(send, shareChooser)
                         )
                     }
                 }) {
-                    Text(stringResource(R.string.system_log_share))
+                    Text(shareLabel)
                 }
                 TextButton(onClick = { withSystemLog = !withSystemLog }) {
-                    Text(
-                        stringResource(
-                            if (withSystemLog) R.string.system_log_without_system else R.string.system_log_with_system
-                        )
-                    )
+                    Text(if (withSystemLog) withoutSystemLabel else withSystemLabel)
                 }
             }
             Text(
