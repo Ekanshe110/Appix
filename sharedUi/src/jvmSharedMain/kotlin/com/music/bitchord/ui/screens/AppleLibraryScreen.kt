@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -116,10 +117,10 @@ fun AppleLibraryScreen(
                         // Two across, as Apple's own grid is: a row of tiles
                         // is a shelf, and this one is a shelf of the
                         // listener's own newest playlists.
-                        items(
+                        itemsIndexed(
                             content.recentlyAdded.chunked(2),
                             key = { index, row -> "apple-library:recent:$index:${row.first().browseId}" },
-                        ) { row ->
+                        ) { _, row ->
                             AppleTileRow(
                                 items = row,
                                 onItemClick = onItemClick,
@@ -147,10 +148,10 @@ fun AppleLibraryScreen(
                         // Apple's library can hold the same recording twice,
                         // and a lazy list that is given the same key twice
                         // crashes rather than drawing it.
-                        items(
+                        itemsIndexed(
                             content.songs,
                             key = { index, song -> "apple-library:song:$index:${song.videoId}" },
-                        ) { song ->
+                        ) { _, song ->
                             AppleLibrarySongRow(
                                 song = song,
                                 onClick = { onSongClick(song) },
@@ -161,10 +162,10 @@ fun AppleLibraryScreen(
                         item(key = "apple-library:playlists-header") {
                             AppleSectionHeader(stringResource(Res.string.apple_playlists))
                         }
-                        items(
+                        itemsIndexed(
                             content.playlists,
                             key = { index, playlist -> "apple-library:playlist:$index:${playlist.browseId}" },
-                        ) { playlist ->
+                        ) { _, playlist ->
                             AppleLibraryRow(
                                 item = playlist,
                                 onClick = { onItemClick(playlist) },

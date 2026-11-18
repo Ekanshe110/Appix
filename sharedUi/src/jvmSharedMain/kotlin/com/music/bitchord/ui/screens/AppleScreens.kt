@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -139,13 +140,13 @@ fun AppleHomeScreen(
                     // heading over a horizontal run of square cards. That is
                     // the shape Apple's own page draws — one row per group,
                     // scrolled sideways, not a grid of everything at once.
-                    items(
+                    itemsIndexed(
                         shelves.filter { it !== hero },
                         // The row's place is part of the key: two groups can
                         // carry the same title, and a lazy list given the
                         // same key twice crashes rather than drawing it.
                         key = { index, shelf -> "apple:shelf:$index:${shelf.title}" },
-                    ) { shelf ->
+                    ) { _, shelf ->
                         AppleShelfCarousel(
                             shelf = shelf,
                             onItemClick = onItemClick,
@@ -224,10 +225,10 @@ fun AppleBrowseScreen(
                 is UiState.Success -> {
                     // Apple's browse page is a run of groups, each a heading
                     // over a horizontal row of square cards.
-                    items(
+                    itemsIndexed(
                         page.data,
                         key = { index, shelf -> "apple-browse:shelf:$index:${shelf.title}" },
-                    ) { shelf ->
+                    ) { _, shelf ->
                         AppleShelfCarousel(
                             shelf = shelf,
                             onItemClick = onItemClick,
@@ -272,10 +273,10 @@ private fun AppleShelfCarousel(
             contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            items(
+            itemsIndexed(
                 shelf.items,
                 key = { index, item -> "apple:card:$index:${item.videoId ?: item.title}" },
-            ) { item ->
+            ) { _, item ->
                 Column(
                     modifier = Modifier.width(150.dp),
                 ) {
