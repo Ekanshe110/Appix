@@ -452,7 +452,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 .createPlaylist(handle.baseUrl, title)
                 .getOrNull()
             val playlistId = created?.id
-            if (!created?.ok == true || playlistId.isNullOrBlank()) {
+            if (created?.ok != true || playlistId.isNullOrBlank()) {
                 onResult(0, songs.size)
                 return@launch
             }
