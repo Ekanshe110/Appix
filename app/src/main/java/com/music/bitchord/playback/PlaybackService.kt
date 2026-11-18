@@ -7179,8 +7179,9 @@ class PlaybackService : MediaLibraryService() {
         // A live station starts where the broadcast is now. The position it
         // was left at is a place in a window that has since rolled on, and
         // seeking there plays nothing at all.
-        val live = items.getOrNull(last.index)?.localConfiguration?.uri
-            ?.let { LiveRadio.isLiveStream(it) } == true
+        val live = last.songs.getOrNull(last.index)?.liveStreamUrl != null ||
+            items.getOrNull(last.index)?.localConfiguration?.uri
+                ?.let { LiveRadio.isLiveStream(it) } == true
         player.setMediaItems(
             items,
             last.index,

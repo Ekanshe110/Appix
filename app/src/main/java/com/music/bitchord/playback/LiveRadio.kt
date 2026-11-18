@@ -28,11 +28,17 @@ internal object LiveRadio {
     /**
      * Whether this address is a live station's stream.
      *
-     * True for the playlist, the media playlist and the segments: they are
-     * all on Apple's own radio hosts.
+     * True for the playlist, the media playlist and the segments. The
+     * playlist is normally the addon's own cleaned copy, not Apple's address:
+     * it is still a live station, and treating it as an ordinary track put it
+     * back into the upgrade hunt and restored it at a position that had
+     * already rolled out of the live window.
      */
     fun isLiveStream(uri: Uri?): Boolean {
-        val host = uri?.host?.lowercase() ?: return false
+        if (uri == null) return false
+        val path = uri.path?.lowercase().orEmpty()
+        if (path.contains("/radio/playlist/") || path.contains("/radio/license")) return true
+        val host = uri.host?.lowercase() ?: return false
         return HOSTS.any { host == it || host.endsWith(".$it") }
     }
 }

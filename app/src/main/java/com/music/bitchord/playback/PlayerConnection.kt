@@ -733,6 +733,22 @@ internal val WIDEVINE_UUID: java.util.UUID =
     java.util.UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed")
 
 /**
+ * The license endpoint that belongs to an addon live playlist.
+ *
+ * `/radio/playlist/<station>/master.m3u8` is served by the addon that also
+ * answers `/radio/license`; the station id in the path is the one the license
+ * is bought for. Null for a playlist that is not the addon's own.
+ */
+private fun licenseFromLivePlaylist(playlist: String): String? {
+    val marker = "/radio/playlist/"
+    val at = playlist.indexOf(marker)
+    if (at < 0) return null
+    val station = playlist.substring(at + marker.length).substringBefore('/')
+    if (station.isBlank()) return null
+    return playlist.substring(0, at) + "/radio/license?station=" + station
+}
+
+/**
  * The rendition the listener asked for, in the session command that carries
  * the switch: `atmos`, `hires` or `lossless`.
  */
@@ -958,7 +974,12 @@ fun Song.toMediaItem(parentBrowseId: String? = null, playLocalFile: Boolean = tr
         // under any more. With this set, a new key means a new session, and
         // a new session means a new license, which is what the station needs.
         .apply {
-            val license = liveLicenseUrl
+            // A restored queue made before the license field existed, or a
+            // row rebuilt from just the stream address, still carries the
+            // playlist the addon serves. The license lives beside it, so it
+            // can be named from there rather than leaving the item without
+            // DRM — which plays the encrypted bytes as silence.
+            val license = liveLicenseUrl ?: liveStream?.let(::licenseFromLivePlaylist)
             if (license != null) {
                 setDrmConfiguration(
                     MediaItem.DrmConfiguration.Builder(WIDEVINE_UUID)
