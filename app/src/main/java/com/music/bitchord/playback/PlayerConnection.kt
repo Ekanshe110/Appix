@@ -910,10 +910,13 @@ fun Song.toMediaItem(parentBrowseId: String? = null, playLocalFile: Boolean = tr
     val offlineFormat: String? = if (playFile) Downloads.savedFormat(videoId) else null
     val formatBadge: String? = downloadFormat ?: offlineFormat
     val playUri = offlineUri?.takeIf { playFile }
+    // Copied into a local first: a property of another module cannot be
+    // smart-cast, and the branch below has to know the stream is there.
+    val liveStream = liveStreamUrl
     val uriString = playUri ?: when {
         // A live station is one continuous stream with a known address: there
         // is nothing to resolve, and the row carries the playlist itself.
-        liveStreamUrl != null -> liveStreamUrl
+        liveStream != null -> liveStream
         videoId.startsWith("content://") || videoId.startsWith("file://") -> videoId
         // A chapter of a public-domain book is a file on an archive, not a
         // YouTube track: its URL is the whole of its identity, and there is
