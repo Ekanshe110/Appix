@@ -561,6 +561,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * row that is not in Apple's catalogue is not offered at all.
      */
     fun keepOnlyAppleRows(songs: List<Song>): List<Song> {
+        // The rule belongs to Apple's look: with the look off, the app is
+        // Auris's again and it plays what it has always played.
         if (!AppSettings.appleCatalogueOnly) return songs
         val kept = songs.filter { isAppleRow(it) }
         return kept.ifEmpty { songs }

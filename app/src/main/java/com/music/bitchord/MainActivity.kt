@@ -817,6 +817,16 @@ private fun BitChordApp(
     ReportDrawnWhen { homeState is UiState.Success }
     // The podcast pages that sit over the feed — see [PodcastUiState].
     val podcastUi = remember { PodcastUiState() }
+    // Apple's look switched off while its own New tab is open: that tab
+    // belongs to Apple's look and is not there any more, so the listener is
+    // put back on Home rather than left on a page the app no longer draws.
+    LaunchedEffect(AppSettings.providerAxes.value.ui) {
+        if (AppSettings.providerAxes.value.ui != com.music.bitchord.data.settings.MusicProvider.APPLE &&
+            nav.selectedTab == TAB_APPLE_NEW
+        ) {
+            nav.selectedTab = TAB_HOME
+        }
+    }
     // Podcasts switched off while their page is open: the tab is gone, so the
     // page it led to goes with it. Home is where the app starts, and a tab
     // that cannot be reached is not a tab anybody can stay on.
