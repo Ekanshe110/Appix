@@ -2,11 +2,13 @@ package com.music.bitchord.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +32,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.RadioStation
 import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.UiState
@@ -101,10 +104,75 @@ fun AppleRadioScreen(
                         onAction = onRetry,
                     )
                 }
-                is UiState.Success -> items(page.data, key = { "apple-radio:${it.id}" }) { station ->
-                    AppleStationRow(station = station, onClick = { onStationClick(station) })
+                is UiState.Success -> {
+                    val stations = page.data
+                    // The grid of station logos at the head of the page, the
+                    // way Apple's own Radio page opens: three across, two
+                    // down, and nothing else above them.
+                    val live = stations.filter { it.isLive }
+                    if (live.isNotEmpty()) {
+                        items(live.chunked(3), key = { "apple-radio:grid:${it.first().id}" }) { row ->
+                            AppleStationGridRow(
+                                stations = row,
+                                onStationClick = onStationClick,
+                            )
+                        }
+                    }
+                    items(stations, key = { "apple-radio:${it.id}" }) { station ->
+                        AppleStationRow(station = station, onClick = { onStationClick(station) })
+                    }
                 }
             }
+        }
+    }
+}
+
+/**
+ * One row of the grid of station logos.
+ *
+ * Three tiles across, each a square of the station's own artwork with its
+ * name under it — the shape Apple's own Radio page opens with.
+ */
+@Composable
+private fun AppleStationGridRow(
+    stations: List<RadioStation>,
+    onStationClick: (RadioStation) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = PAGE_GUTTER, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        stations.forEach { station ->
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onStationClick(station) },
+            ) {
+                AsyncImage(
+                    model = station.artworkUrl?.artworkAt(CARD_ART_PX),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = station.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        // A row of two tiles is still three columns wide.
+        repeat(3 - stations.size) {
+            Spacer(Modifier.weight(1f))
         }
     }
 }

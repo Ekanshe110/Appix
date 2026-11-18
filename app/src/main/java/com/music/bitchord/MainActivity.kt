@@ -1371,7 +1371,7 @@ private fun BitChordApp(
     // tabs — Home, New, Radio, Library, Search — and this is where the New
     // one comes from: under Apple's look the second slot is Apple's browse
     // page rather than the podcasts, which Apple's app does not have either.
-    val providerAxes by AppSettings.providerAxes.collectAsStateWithLifecycle()
+    // The axes themselves are read once, higher up.
     val appleLook = providerAxes.ui == com.music.bitchord.data.settings.MusicProvider.APPLE
     // The tabs, each with the constant that names it.
     //
@@ -3163,6 +3163,11 @@ private fun BitChordApp(
                     // A radio station: the Radio page is where it came from.
                     PlaybackSourceType.RADIO -> {
                         nav.selectedTab = TAB_RADIO
+                    }
+                    // A row of the listener's own library: the Library page is
+                    // where it came from.
+                    PlaybackSourceType.LIBRARY -> {
+                        nav.selectedTab = TAB_LIBRARY
                     }
                 }
             },
