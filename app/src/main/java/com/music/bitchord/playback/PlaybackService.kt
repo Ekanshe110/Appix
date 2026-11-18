@@ -5142,6 +5142,10 @@ class PlaybackService : MediaLibraryService() {
         val item = player.currentMediaItem ?: return
         val mediaId = item.mediaId
         val uri = item.localConfiguration?.uri
+        // A live station is left as it is: there is no better copy of a
+        // broadcast, and looking for one replaces the broadcast with
+        // something that is not it.
+        if (LiveRadio.isLiveStream(uri)) return
         val alreadyPending = QualityUpgrade.isPending(mediaId)
         val shelved = QualityUpgrade.shelvedFor(mediaId)
         if (shelved == null && !alreadyPending && !QualityUpgrade.couldStillUpgrade(mediaId, uri, byHand)) return
