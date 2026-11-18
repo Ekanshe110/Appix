@@ -439,7 +439,11 @@ object AudioCache {
         val family = uri.getQueryParameter("v")?.let { videoId ->
             cache.keys.filter { it == videoId || it.startsWith("$videoId#") }
         } ?: emptyList()
-        (family + exact).distinct().forEach { key ->
+        // Playlists kept by an older build go too: they are never read now
+        // (see [isPlaylist]), and a kept playlist of a live station is a
+        // stale one, which is worse than no playlist at all.
+        val playlists = cache.keys.filter { it.endsWith(".m3u8", ignoreCase = true) }
+        (family + exact + playlists).distinct().forEach { key ->
             runCatching { cache.removeResource(key) }
                 .onSuccess { TrackLog.d(TAG, "discarded cache entry $key", about = about) }
                 .onFailure { TrackLog.d(TAG, "cache entry $key still in use: ${it.message}", about = about) }
@@ -975,6 +979,24 @@ object AudioCache {
         return LIVE_RADIO_HOSTS.any { host == it || host.endsWith(".$it") }
     }
 
+    /**
+     * Whether an address is a playlist rather than a song.
+     *
+     * A playlist is a few kilobytes that changes every few seconds, and it is
+     * fetched from the same address every time — so there is nothing to gain
+     * from keeping it, and a great deal to lose: a kept playlist is a stale
+     * one, and for a live station a stale playlist names the key the stream
+     * was encrypted under a moment ago, which is a key the stream is no
+     * longer under. The player then asks its DRM system for a scheme the
+     * stale playlist never named, and the station refuses to play with
+     * "Media does not support uuid: edef8ba9…".
+     *
+     * So playlists never touch the disk cache — they go to the network, like
+     * the live audio they describe.
+     */
+    private fun isPlaylist(uri: Uri): Boolean =
+        uri.path?.lowercase()?.endsWith(".m3u8") == true
+
     /** The part of a cache key that names the track, before any `#rendition`; see [keyFactory]. */
     private fun cacheKeyBaseOf(mediaId: String): String =
         SourceRegistry.parseTrackKey(mediaId)?.let { (source, track) -> "$source|$track" } ?: mediaId
@@ -1065,7 +1087,12 @@ object AudioCache {
 
             override fun open(dataSpec: DataSpec): Long {
                 val scheme = dataSpec.uri.scheme
-                activeDs = if (scheme == "file" || scheme == "content" || isLiveRadio(dataSpec.uri)) {
+                activeDs = if (
+                    scheme == "file" ||
+                    scheme == "content" ||
+                    isLiveRadio(dataSpec.uri) ||
+                    isPlaylist(dataSpec.uri)
+                ) {
                     upstreamDs
                 } else {
                     cacheDs
