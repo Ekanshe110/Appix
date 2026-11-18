@@ -170,6 +170,7 @@
     <string name="apple_radio_empty">Apple Music returned no stations</string>
     <string name="apple_radio_unplayable">This station cannot be played right now</string>
     <string name="apple_browse_empty">Apple Music returned nothing to browse</string>
+    <string name="stop">Stop</string>
     <string name="apple_new_tab">New</string>
     <string name="apple_library_empty">Your Apple Music library has no playlists in it</string>
     <string name="music_catalogue">Music catalogue</string>
