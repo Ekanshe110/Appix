@@ -3,6 +3,7 @@ package com.music.bitchord.data.apple
 import com.music.bitchord.data.model.BrowseItem
 import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.model.HomeShelf
+import com.music.bitchord.data.model.PlaybackSourceType
 import com.music.bitchord.data.model.RadioStation
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.ShelfItem
@@ -240,3 +241,33 @@ internal fun AppleStation.station(): RadioStation = RadioStation(
     isLive = isLive == true,
     deepLink = url?.takeIf { it.startsWith("http://") || it.startsWith("https://") },
 )
+
+/**
+ * A live station, as a row this app can play.
+ *
+ * The row carries the stream itself: a live station is one continuous
+ * playlist, not a song to be looked up, and its audio is Widevine-protected,
+ * so the device needs the playlist and somewhere to get the license. The
+ * license endpoint is the addon's, because the license can only be bought
+ * with the listener's own Apple account — which never leaves the server.
+ */
+internal fun AppleLiveStream.song(
+    handle: AppleSources.Handle,
+    station: RadioStation,
+): Song = Song(
+    videoId = SourceRegistry.trackKey(handle.configId, station.id),
+    title = station.name,
+    artist = station.subtitle?.takeIf { it.isNotBlank() } ?: "Apple Music",
+    thumbnailUrl = station.artworkUrl,
+    durationText = null,
+    radioName = station.name,
+    playbackSource = station.name,
+    playbackSourceType = PlaybackSourceType.RADIO,
+    liveStreamUrl = streamURL,
+    liveLicenseUrl = licenseUrl(handle.baseUrl, station.id),
+)
+
+/** Where the device asks the addon for a live stream's license. */
+internal fun licenseUrl(baseUrl: String, stationId: String): String =
+    baseUrl.trimEnd('/') + "/radio/license?station=" +
+        java.net.URLEncoder.encode(stationId, "UTF-8")

@@ -234,6 +234,25 @@ object AppleCatalogue {
         ).map { it.stations }
     }
 
+    /**
+     * One live station's playable stream.
+     *
+     * The addon reads Apple's own manifest and key identifiers and publishes
+     * them here; the license itself stays on the addon, because it has to be
+     * bought with the listener's account.
+     */
+    suspend fun liveStream(baseUrl: String, stationId: String): Result<AppleLiveStream> {
+        if (stationId.isBlank()) return Result.failure(AppleException("That is not a station"))
+        return get(
+            baseUrl,
+            listOf("radio", "station", stationId, "live"),
+            emptyMap(),
+            AppleLiveStreamResponse.serializer(),
+        ).mapCatching { response ->
+            response.live ?: throw AppleException("That station has no live stream")
+        }
+    }
+
     /** The station Apple built for one song, when it has one. */
     suspend fun stationForSong(baseUrl: String, songId: String): Result<AppleStation?> {
         if (songId.isBlank()) return Result.success(null)

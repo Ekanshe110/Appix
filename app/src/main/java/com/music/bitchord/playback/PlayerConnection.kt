@@ -603,6 +603,8 @@ fun MediaItem.toSong() = Song(
     sourceQuality = mediaMetadata.extras?.getString(EXTRA_SOURCE_QUALITY),
     atmosAvailable = mediaMetadata.extras?.getBoolean(EXTRA_ATMOS_AVAILABLE) == true,
     hiResAvailable = mediaMetadata.extras?.getBoolean(EXTRA_HIRES_AVAILABLE) == true,
+    liveStreamUrl = mediaMetadata.extras?.getString(EXTRA_LIVE_STREAM_URL),
+    liveLicenseUrl = mediaMetadata.extras?.getString(EXTRA_LIVE_LICENSE_URL),
 )
 
 /** @see Song.fromAutoplay */
@@ -712,6 +714,23 @@ internal const val EXTRA_ATMOS_AVAILABLE = "bitchord.atmosAvailable"
 
 /** @see Song.hiResAvailable */
 internal const val EXTRA_HIRES_AVAILABLE = "bitchord.hiResAvailable"
+
+/** @see Song.liveStreamUrl */
+internal const val EXTRA_LIVE_STREAM_URL = "bitchord.liveStreamUrl"
+
+/** @see Song.liveLicenseUrl */
+internal const val EXTRA_LIVE_LICENSE_URL = "bitchord.liveLicenseUrl"
+
+/**
+ * The DRM scheme Apple's live radio is protected with.
+ *
+ * Widevine, named by the UUID that identifies it in a playlist's key line
+ * and in Media3's own configuration. Apple's stations also publish PlayReady
+ * and FairPlay keys; Widevine is the one an Android device can actually
+ * play.
+ */
+internal val WIDEVINE_UUID: java.util.UUID =
+    java.util.UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed")
 
 /**
  * The rendition the listener asked for, in the session command that carries
@@ -892,6 +911,9 @@ fun Song.toMediaItem(parentBrowseId: String? = null, playLocalFile: Boolean = tr
     val formatBadge: String? = downloadFormat ?: offlineFormat
     val playUri = offlineUri?.takeIf { playFile }
     val uriString = playUri ?: when {
+        // A live station is one continuous stream with a known address: there
+        // is nothing to resolve, and the row carries the playlist itself.
+        liveStreamUrl != null -> liveStreamUrl
         videoId.startsWith("content://") || videoId.startsWith("file://") -> videoId
         // A chapter of a public-domain book is a file on an archive, not a
         // YouTube track: its URL is the whole of its identity, and there is
@@ -922,6 +944,19 @@ fun Song.toMediaItem(parentBrowseId: String? = null, playLocalFile: Boolean = tr
     return MediaItem.Builder()
         .setMediaId(videoId)
         .setUri(resolvePlaybackUri(uriString, localPath))
+        // A live station's audio is encrypted, and the key has to come from
+        // somewhere: the license endpoint the row carries. The scheme is
+        // Widevine, because that is what the stream is protected with.
+        .apply {
+            val license = liveLicenseUrl
+            if (license != null) {
+                setDrmConfiguration(
+                    MediaItem.DrmConfiguration.Builder(WIDEVINE_UUID)
+                        .setLicenseUri(license)
+                        .build(),
+                )
+            }
+        }
     .setMediaMetadata(
         MediaMetadata.Builder()
             .setTitle(title)
@@ -975,6 +1010,7 @@ fun Song.toMediaItem(parentBrowseId: String? = null, playLocalFile: Boolean = tr
                     isExplicit != null || isVideo || isVideoOrigin || radioName != null ||
                     playbackSource != null || playbackSourceType != null || playbackSourceId != null ||
                     atmosAvailable || hiResAvailable ||
+                    liveStreamUrl != null || liveLicenseUrl != null ||
                     parentBrowseId != null
                 ) {
                     setExtras(
@@ -1006,6 +1042,12 @@ fun Song.toMediaItem(parentBrowseId: String? = null, playLocalFile: Boolean = tr
                             EXTRA_VIDEO_ORIGIN to isVideoOrigin,
                             EXTRA_ATMOS_AVAILABLE to atmosAvailable,
                             EXTRA_HIRES_AVAILABLE to hiResAvailable,
+                            // A live station's own address and its license
+                            // endpoint: without them the row would come back
+                            // from the session as an ordinary track with
+                            // nothing to play.
+                            EXTRA_LIVE_STREAM_URL to liveStreamUrl,
+                            EXTRA_LIVE_LICENSE_URL to liveLicenseUrl,
                         ),
                     )
                 }

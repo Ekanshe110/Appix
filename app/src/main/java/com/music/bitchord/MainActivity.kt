@@ -5798,18 +5798,30 @@ private fun RootPage(
                 listState = scroll.radio,
                 onStationClick = { station ->
                     if (station.isLive) {
-                        // A live station's audio is Widevine-protected and
-                        // only Apple's own player decodes it. The row says
-                        // LIVE, and tapping it opens Apple's page for it.
-                        station.deepLink?.let { link ->
-                            runCatching {
-                                context.startActivity(
-                                    android.content.Intent(
-                                        android.content.Intent.ACTION_VIEW,
-                                        android.net.Uri.parse(link),
-                                    ),
-                                )
+                        // A live station plays here. Its audio is
+                        // Widevine-protected, so the addon publishes the
+                        // stream and the license endpoint, the device does
+                        // the handshake, and the station is heard in this
+                        // app — no browser, no hand-off to Apple's player.
+                        pageScope.launch {
+                            val song = viewModel.appleLiveStationSong(station)
+                            if (song == null) {
+                                // The station could not be opened for playback.
+                                // Nothing else is offered in its place: the
+                                // row says LIVE, and a live station either
+                                // plays here or says why it cannot.
+                                Toast.makeText(
+                                    context,
+                                    R.string.apple_radio_unplayable,
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                return@launch
                             }
+                            pageActions.playFrom(
+                                listOf(song),
+                                0,
+                                QueueSource(station.name, PlaybackSourceType.RADIO),
+                            )
                         }
                     } else {
                         // A seeded station is a queue of songs, and it plays

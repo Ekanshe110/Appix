@@ -140,6 +140,32 @@ data class AppleStationResponse(
 )
 
 /**
+ * A live station's playable stream.
+ *
+ * The playlist is Apple's own address and is public; the license is not, and
+ * is not here either — it has to be bought with the account, so the addon
+ * does that when the device asks with its challenge.
+ */
+@Serializable
+data class AppleLiveStream(
+    @SerialName("stationId") val stationId: String = "",
+    @SerialName("adamId") val adamId: String? = null,
+    @SerialName("streamURL") val streamURL: String = "",
+    @SerialName("mediaURL") val mediaURL: String? = null,
+    @SerialName("pssh") val pssh: String? = null,
+    @SerialName("skd") val skd: String? = null,
+    @SerialName("contentId") val contentId: String? = null,
+    @SerialName("widevineUuid") val widevineUuid: String? = null,
+    @SerialName("keySystem") val keySystem: String? = null,
+)
+
+/** The addon's answer for one live station's stream. */
+@Serializable
+data class AppleLiveStreamResponse(
+    @SerialName("live") val live: AppleLiveStream? = null,
+)
+
+/**
  * The manifest fields this app reads to know an addon is Apple's.
  *
  * The addon publishes `catalogueProvider: "apple-music"` and a `library`

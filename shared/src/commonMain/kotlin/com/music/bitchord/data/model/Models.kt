@@ -160,6 +160,21 @@ data class Song(    val videoId: String,
      * row that says nothing is asked for the standard rung.
      */
     val hiResAvailable: Boolean = false,
+    /**
+     * The stream to play, when the row is a live stream rather than a track
+     * the app has to look up.
+     *
+     * Apple's live radio is one continuous encrypted HLS stream, not a song:
+     * its playlist is known before anything is played and there is nothing to
+     * resolve, so the row carries its own address. Null on every ordinary
+     * track.
+     */
+    val liveStreamUrl: String? = null,
+    /**
+     * Where the device trades its Widevine challenge for the live stream's
+     * license. Null on every row that is not a live stream.
+     */
+    val liveLicenseUrl: String? = null,
 ) {
     /** Legacy derived property: true if and only if [queueTier] is [QueueTier.AUTOPLAY]. */
     val fromAutoplay: Boolean get() = queueTier == QueueTier.AUTOPLAY

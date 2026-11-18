@@ -60,6 +60,7 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.MediaCodecAudioRenderer
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
+import androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.mediacodec.MediaCodecUtil
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -1623,10 +1624,19 @@ class PlaybackService : MediaLibraryService() {
         AudioCache.setUpstream(defaultDataSourceFactory)
         // DsdExtractorsFactory: the stock extractors plus DSF/DFF, which Media3
         // cannot open at all. A DSD file leaves the extractor as float PCM.
+        //
+        // The DRM provider is what makes an encrypted stream playable: Apple's
+        // live radio is Widevine-protected, and the license for it is fetched
+        // from the endpoint the row names. The provider is attached to the
+        // factory rather than to a player, so every player and every read
+        // ahead can open an encrypted stream.
+        val drmProvider = DefaultDrmSessionManagerProvider()
+        drmProvider.setDrmHttpDataSourceFactory(OkHttpDataSource.Factory(Http.client))
         mediaSourceFactory = DefaultMediaSourceFactory(
             AudioCache.playbackFactory(defaultDataSourceFactory),
             DsdExtractorsFactory(),
         )
+            .setDrmSessionManagerProvider(drmProvider)
             .setLoadErrorHandlingPolicy(PermanentAwareLoadErrorPolicy())
     }
 

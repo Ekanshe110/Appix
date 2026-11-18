@@ -467,6 +467,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * One live Apple station, as a row this app can play.
+     *
+     * A live station plays here rather than in Apple's own app: the addon
+     * publishes the stream and the license endpoint, the device does the
+     * Widevine handshake, and nothing is handed to a browser. Null when the
+     * station cannot be played — which is a failure the caller has to say
+     * out loud, not a reason to open anything else.
+     */
+    suspend fun appleLiveStationSong(station: RadioStation): Song? {
+        val handle = com.music.bitchord.data.apple.AppleSources.handle() ?: return null
+        val live = com.music.bitchord.data.apple.AppleCatalogue
+            .liveStream(handle.baseUrl, station.id)
+            .getOrNull() ?: return null
+        if (live.streamURL.isBlank()) return null
+        return live.song(handle, station)
+    }
+
+    /**
      * The podcast shows the account follows.
      *
      * A show is its own kind of thing — something you subscribe to, with
