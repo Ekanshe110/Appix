@@ -172,6 +172,7 @@
     <string name="apple_browse_empty">Apple Music returned nothing to browse</string>
     <string name="stop">Stop</string>
     <string name="provider_apple_only_catalogue">Only Apple Music tracks</string>
+    <string name="atmos_not_supported">This device cannot play Dolby Atmos</string>
     <string name="apple_only_catalogue_nothing">None of these are in Apple Music</string>
     <plurals name="apple_only_catalogue_dropped">
         <item quantity="one">%d track is not in Apple Music and was left out</item>

@@ -92,7 +92,7 @@ object AppleCatalogue {
     /**
      * The addon's Apple home page: Apple's own shelves, in Apple's order.
      */
-    suspend fun home(baseUrl: String, limit: Int = 20): Result<AppleHome> =
+    suspend fun home(baseUrl: String, limit: Int = 40): Result<AppleHome> =
         get(baseUrl, listOf("home"), mapOf("limit" to limit.toString()), AppleHome.serializer())
 
     /**

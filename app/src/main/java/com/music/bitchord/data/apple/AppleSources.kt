@@ -187,7 +187,7 @@ internal object AppleSources {
      * the library id: it is the listener's own copy, and the catalogue's id
      * for the same recording is not the same thing.
      */
-    suspend fun libraryPlaylists(handle: Handle, limit: Int = 50): Result<List<ShelfItem>> =
+    suspend fun libraryPlaylists(handle: Handle, limit: Int = 100): Result<List<ShelfItem>> =
         AppleCatalogue.library(handle.baseUrl, "playlists", 0, limit).map { page ->
             page.tracks.mapNotNull { item ->
                 if (item.title.isBlank()) return@mapNotNull null
@@ -202,7 +202,7 @@ internal object AppleSources {
         }
 
     /** The listener's own albums, as the tiles the Library page shows. */
-    suspend fun libraryAlbums(handle: Handle, limit: Int = 50): Result<List<ShelfItem>> =
+    suspend fun libraryAlbums(handle: Handle, limit: Int = 100): Result<List<ShelfItem>> =
         AppleCatalogue.library(handle.baseUrl, "albums", 0, limit).map { page ->
             page.tracks.mapNotNull { item ->
                 if (item.title.isBlank()) return@mapNotNull null
@@ -217,7 +217,7 @@ internal object AppleSources {
         }
 
     /** The listener's own songs, as the rows that play. */
-    suspend fun librarySongs(handle: Handle, limit: Int = 50): Result<List<Song>> =
+    suspend fun librarySongs(handle: Handle, limit: Int = 100): Result<List<Song>> =
         AppleCatalogue.library(handle.baseUrl, "songs", 0, limit).map { page ->
             page.tracks.mapNotNull { item ->
                 val id = item.catalogId?.takeIf { it.isNotBlank() } ?: item.id

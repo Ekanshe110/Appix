@@ -642,11 +642,18 @@ internal fun PlaybackQualityLabel(
                     .padding(horizontal = QUALITY_BADGE_TAP_PADDING),
             )
             if (renditionSwitchable) {
+                // The cue is the switch as much as the badge is: it says
+                // there is another answer to ask for, so asking for it by
+                // tapping the cue is what a finger expects to happen.
                 Text(
                     text = "›",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 2.dp, end = QUALITY_BADGE_TAP_PADDING),
+                    modifier = Modifier
+                        .clickable {
+                            switchRendition?.invoke(targetRendition)
+                        }
+                        .padding(start = 2.dp, end = QUALITY_BADGE_TAP_PADDING),
                 )
             }
         }
