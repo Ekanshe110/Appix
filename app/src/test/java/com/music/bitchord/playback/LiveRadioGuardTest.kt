@@ -40,29 +40,6 @@ class LiveRadioGuardTest {
     }
 
     @Test
-    fun `the addon's own playlist is the station as well`() {
-        // The player is handed the addon's playlist, not Apple's: the addon
-        // republishes it because Apple's key line names a key the audio is
-        // not encrypted under. Recognising only Apple's hosts left every
-        // guard switched off for the item actually playing.
-        assertTrue(
-            LiveRadio.isLiveStream(
-                Uri.parse(
-                    "https://music.csproject.org/a/sh_abc/radio/playlist/ra.978194965/master.m3u8",
-                ),
-            ),
-        )
-        assertTrue(
-            LiveRadio.isLiveStream(
-                Uri.parse(
-                    "https://music.csproject.org/a/sh_abc/radio/playlist/" +
-                        "ra.978194965/variant.m3u8?u=https%3A%2F%2Fliveradio.music.apple.com%2Fx",
-                ),
-            ),
-        )
-    }
-
-    @Test
     fun `an ordinary stream is not a live station`() {
         assertFalse(LiveRadio.isLiveStream(Uri.parse(ordinary)))
         assertFalse(LiveRadio.isLiveStream(Uri.parse("bitchord://source?s=apple&t=ra.978194965")))

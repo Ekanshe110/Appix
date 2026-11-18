@@ -11,7 +11,6 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.ForwardingAudioSink
 import com.music.bitchord.BuildConfig
-import com.music.bitchord.data.TrackLog
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.playback.AudioOutputStatus
 import com.music.bitchord.playback.audio.usb.DirectAudioOutput
@@ -108,16 +107,6 @@ class PrecisionAudioSink(
     private val exclusiveWanted: () -> Boolean = { false },
     /** Source bit depth, for float decodes that cannot name their own. */
     private val bitDepthHint: () -> Int? = { null },
-    /**
-     * Whether the item currently playing is a DRM-protected live station.
-     *
-     * Read on the audio thread, so the caller answers from a volatile flag it
-     * already owns rather than asking ExoPlayer (which is app-thread only).
-     * When true, the sink measures the decoder's own PCM and writes the level
-     * to the app's log — the one measurement that separates "the CDM handed
-     * over silence" from "the samples arrived and the sink lost them".
-     */
-    private val radioDiagnostics: () -> Boolean = { false },
 ) : ForwardingAudioSink(delegate) {
 
     /** Whether the precision Float32 DSP path is currently active for the configured format. */
@@ -137,18 +126,6 @@ class PrecisionAudioSink(
         private set
 
     private var processCounter: Long = 0L
-
-    /**
-     * Decoder PCM level, measured over the buffers between two log lines.
-     *
-     * The window is counted in buffers rather than seconds because the buffer
-     * size is the renderer's business, not the app's: what matters is that
-     * enough samples were seen for the number to mean something.
-     */
-    private var diagnosticBuffers: Int = 0
-    private var diagnosticSumSquares: Double = 0.0
-    private var diagnosticPeak: Float = 0f
-    private var diagnosticSamples: Long = 0L
 
     /** What [bitPerfect] said when the last buffer was processed. */
     private var dspBypassLatched = false
@@ -616,12 +593,6 @@ class PrecisionAudioSink(
                 }
             }
         }
-        // The decoder's own level, before anything of ours touches it. A live
-        // station that decrypts to silence and one whose samples arrive intact
-        // but are lost further down look the same from the outside; this is
-        // the measurement that tells them apart.
-        measureRadioPcm(inputBuffer)
-
         if (!isPrecisionActive) {
             return delegate.handleBuffer(inputBuffer, presentationTimeUs, encodedAccessUnitCount)
         }
@@ -824,66 +795,6 @@ class PrecisionAudioSink(
         }
 
         return !inputBuffer.hasRemaining() && !outputByteBuffer.hasRemaining()
-    }
-
-    /**
-     * Measures the decoder PCM and writes its level to the app's log.
-     *
-     * The buffer is duplicated before it is read: the sink still owns the
-     * original and hands it to the delegate untouched on the bypass path, so
-     * the measurement must not move its position. Only 16-bit and float PCM
-     * are measured — those are the two a radio station's decoder produces on
-     * the devices this app runs on.
-     */
-    private fun measureRadioPcm(buffer: ByteBuffer) {
-        if (!radioDiagnostics()) return
-        val encoding = inputPcmEncoding
-            ?: activeFormat?.pcmEncoding?.let { mapToPcmEncoding(it) }
-            ?: return
-        val view = buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
-        val bytes = view.remaining()
-        var sumSquares = 0.0
-        var peak = 0f
-        var count = 0L
-        when (encoding) {
-            PcmEncoding.PCM_16BIT -> {
-                count = (bytes / 2).toLong()
-                for (i in 0 until (bytes / 2)) {
-                    val sample = view.getShort(i * 2).toInt() / 32768f
-                    sumSquares += (sample * sample).toDouble()
-                    val magnitude = kotlin.math.abs(sample)
-                    if (magnitude > peak) peak = magnitude
-                }
-            }
-            PcmEncoding.PCM_FLOAT -> {
-                count = (bytes / 4).toLong()
-                for (i in 0 until (bytes / 4)) {
-                    val sample = view.getFloat(i * 4)
-                    if (!sample.isFinite()) continue
-                    sumSquares += (sample * sample).toDouble()
-                    val magnitude = kotlin.math.abs(sample)
-                    if (magnitude > peak) peak = magnitude
-                }
-            }
-            else -> return
-        }
-        if (count <= 0L) return
-        diagnosticBuffers++
-        diagnosticSumSquares += sumSquares
-        diagnosticSamples += count
-        if (peak > diagnosticPeak) diagnosticPeak = peak
-        if (diagnosticBuffers < DIAGNOSTIC_WINDOW_BUFFERS) return
-        val rms = kotlin.math.sqrt(diagnosticSumSquares / diagnosticSamples.toDouble()).toFloat()
-        TrackLog.d(
-            "RADIO_PCM",
-            "decoder avgRms=${"%.6f".format(java.util.Locale.ROOT, rms)} " +
-                "peak=${"%.6f".format(java.util.Locale.ROOT, diagnosticPeak)} " +
-                "samples=$diagnosticSamples encoding=${encoding.name}",
-        )
-        diagnosticBuffers = 0
-        diagnosticSumSquares = 0.0
-        diagnosticPeak = 0f
-        diagnosticSamples = 0L
     }
 
     /** [presentationTimeUs] moved on by [frames], or left alone when the rate is unknown. */
@@ -1358,14 +1269,6 @@ class PrecisionAudioSink(
 
         /** How often an unclaimed exclusive session is retried mid-track. */
         private const val EXCLUSIVE_RETRY_MS = 5_000L
-
-        /**
-         * Decoder buffers between two PCM level lines.
-         *
-         * Short enough that one line lands while a radio station is still
-         * playing, long enough that the number is not one buffer's accident.
-         */
-        private const val DIAGNOSTIC_WINDOW_BUFFERS = 20
 
         /**
          * Widest channel layout the precision path will take on. Eight covers
