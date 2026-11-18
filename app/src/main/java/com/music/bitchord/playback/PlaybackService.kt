@@ -1367,9 +1367,8 @@ class PlaybackService : MediaLibraryService() {
          * the audio was never audible), or the track ran dry and never had
          * anything to play.
          */
-        override fun onAudioSinkUnderrun(
+        override fun onAudioUnderrun(
             eventTime: AnalyticsListener.EventTime,
-            audioSink: AudioSink,
             underrunCount: Int,
             totalUnderrunDurationUs: Long,
             lastPositionUs: Long,
@@ -1381,7 +1380,7 @@ class PlaybackService : MediaLibraryService() {
             )
         }
 
-        override fun onRenderedPositionDiscontinuity(
+        override fun onPositionDiscontinuity(
             eventTime: AnalyticsListener.EventTime,
             oldPosition: Player.PositionInfo,
             newPosition: Player.PositionInfo,
