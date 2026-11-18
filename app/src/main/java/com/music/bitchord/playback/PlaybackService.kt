@@ -1359,41 +1359,6 @@ class PlaybackService : MediaLibraryService() {
         }
 
         /**
-         * The audio track's own account of itself: how much it was given,
-         * how much it played, and how often it ran dry.
-         *
-         * A live station that is silent is silent in one of two ways, and
-         * only these numbers say which: the track was fed and played (and
-         * the audio was never audible), or the track ran dry and never had
-         * anything to play.
-         */
-        override fun onAudioUnderrun(
-            eventTime: AnalyticsListener.EventTime,
-            underrunCount: Int,
-            totalUnderrunDurationUs: Long,
-            lastPositionUs: Long,
-        ) {
-            TrackLog.w(
-                "AUDIO_OUT",
-                "underrun x$underrunCount (${totalUnderrunDurationUs}us) at ${lastPositionUs}us",
-                about = eventTime.mediaId(),
-            )
-        }
-
-        override fun onPositionDiscontinuity(
-            eventTime: AnalyticsListener.EventTime,
-            oldPosition: Player.PositionInfo,
-            newPosition: Player.PositionInfo,
-            reason: Int,
-        ) {
-            TrackLog.d(
-                "AUDIO_OUT",
-                "position ${oldPosition.positionMs}ms -> ${newPosition.positionMs}ms (reason $reason)",
-                about = eventTime.mediaId(),
-            )
-        }
-
-        /**
          * The true-bitrate feed: every completed media load adds its bytes
          * — and the stretch of the track's timeline those bytes decode to —
          * to [measuredBitrate], attributed to the track whose window the
@@ -1428,6 +1393,14 @@ class PlaybackService : MediaLibraryService() {
             newPosition: Player.PositionInfo,
             reason: Int,
         ) {
+            // Where the playhead jumped to, and why. A live station that
+            // breaks silently shows it here: the jump is the moment the
+            // stream stopped being the thing it was.
+            TrackLog.d(
+                "AUDIO_OUT",
+                "position ${oldPosition.positionMs}ms -> ${newPosition.positionMs}ms (reason $reason)",
+                about = eventTime.mediaId(),
+            )
             measuredBitrate.onDiscontinuity(eventTime.mediaId())
         }
 
