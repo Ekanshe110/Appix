@@ -950,12 +950,20 @@ fun Song.toMediaItem(parentBrowseId: String? = null, playLocalFile: Boolean = tr
         // A live station's audio is encrypted, and the key has to come from
         // somewhere: the license endpoint the row carries. The scheme is
         // Widevine, because that is what the stream is protected with.
+        //
+        // More than one session, because a live station rotates its key: the
+        // playlist starts naming a different key every few minutes, and a
+        // player that keeps the session it already has would keep decrypting
+        // with the key it has — which is not the key the audio is encrypted
+        // under any more. With this set, a new key means a new session, and
+        // a new session means a new license, which is what the station needs.
         .apply {
             val license = liveLicenseUrl
             if (license != null) {
                 setDrmConfiguration(
                     MediaItem.DrmConfiguration.Builder(WIDEVINE_UUID)
                         .setLicenseUri(license)
+                        .setMultiSession(true)
                         .build(),
                 )
             }
