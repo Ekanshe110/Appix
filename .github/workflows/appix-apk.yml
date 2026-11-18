@@ -57,7 +57,15 @@ jobs:
       - run: chmod +x gradlew
 
       - name: Build
-        run: ./gradlew :app:assembleDevRelease --stacktrace --console=plain
+        # Lint-vital is the slowest thing in this job (minutes on a release
+        # variant) and it runs after the code compiled. The signed APK does
+        # not need it; the separate test workflow is the gate for that.
+        run: |
+          ./gradlew :app:assembleDevRelease \
+            --build-cache --parallel --stacktrace --console=plain \
+            -x :app:lintVitalDevRelease \
+            -x :app:lintVitalAnalyzeDevRelease \
+            -x :app:lintVitalReportDevRelease
 
       - name: Verify package, label and version
         env:
