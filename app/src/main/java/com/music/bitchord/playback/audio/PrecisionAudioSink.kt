@@ -148,7 +148,7 @@ class PrecisionAudioSink(
     private var lastExclusiveAttemptMs = 0L
 
     /** Fast-build diagnostics: what reaches the sink, and at what gain. */
-    private var lastPcmProbeUs = Long.MIN_VALUE
+    private var lastPcmProbeUs = 0L
     private var lastSinkVolume = Float.NaN
     private var lastEntryLogMs = 0L
 
