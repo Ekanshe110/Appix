@@ -7711,7 +7711,24 @@ class PlaybackService : MediaLibraryService() {
                         // first for AAC so the encrypted stream gets a decoder
                         // that can actually carry it.
                         if (mimeType == MimeTypes.AUDIO_AAC) {
-                            candidates.sortedByDescending { it.hardwareAccelerated }
+                            TrackLog.d(
+                                "AUDIO_OUT",
+                                "AAC decoders: " + candidates.joinToString { info ->
+                                    "${info.name} hw=${info.hardwareAccelerated} " +
+                                        "sw=${info.softwareOnly} secure=${info.secure}"
+                                },
+                            )
+                            // A vendor decoder is not always flagged as
+                            // hardware-accelerated, but any vendor AAC decoder
+                            // is a better bet for encrypted audio than the
+                            // platform software one, which is known to accept
+                            // the crypto config and then emit silence on this
+                            // device. Put every non-software name first.
+                            candidates.sortedWith(
+                                compareByDescending<androidx.media3.exoplayer.mediacodec.MediaCodecInfo> {
+                                    it.hardwareAccelerated
+                                }.thenByDescending { it.name != "c2.android.aac.decoder" },
+                            )
                         } else {
                             candidates
                         }
