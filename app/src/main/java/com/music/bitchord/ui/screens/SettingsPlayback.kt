@@ -308,6 +308,7 @@ internal fun HomeProvider.localizedLabel(): String = stringResource(
 internal fun HomeProviderSheet(
     selected: MusicProvider,
     onSelect: (MusicProvider) -> Unit,
+    appleAvailable: Boolean = true,
 ) {
     val haptics = LocalHapticFeedback.current
     Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
@@ -338,10 +339,13 @@ internal fun HomeProviderSheet(
         ) {
             MusicProvider.entries.forEach { provider ->
                 val chosen = provider == selected
+                // Apple is only offered when an Apple Music manifest is
+                // installed: without one there is no Apple catalogue to read.
+                val available = provider != MusicProvider.APPLE || appleAvailable
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
+                        .clickable(enabled = available) {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onSelect(provider)
                         }
@@ -352,7 +356,11 @@ internal fun HomeProviderSheet(
                         Text(
                             text = provider.localizedLabel(),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
+                            color = if (available) {
+                                MaterialTheme.colorScheme.onBackground
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         )
                         Text(
                             text = stringResource(

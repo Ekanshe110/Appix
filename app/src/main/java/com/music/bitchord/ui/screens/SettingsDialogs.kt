@@ -12,14 +12,17 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.R
+import com.music.bitchord.data.apple.AppleManifestLocator
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.ProviderAxis
 import com.music.bitchord.playback.AudioCache
@@ -155,6 +158,12 @@ internal fun SettingsDialogs(
 
     sheets.pickingProviderAxis?.let { axis ->
         val axes by AppSettings.providerAxes.collectAsStateWithLifecycle()
+        // Apple is offered only when there is an Apple Music manifest to read
+        // it through.
+        var appleAvailable by remember { mutableStateOf(true) }
+        LaunchedEffect(axis) {
+            appleAvailable = AppleManifestLocator.isInstalled()
+        }
         ModalBottomSheet(
             onDismissRequest = { sheets.pickingProviderAxis = null },
             containerColor = MaterialTheme.colorScheme.background,
@@ -162,6 +171,7 @@ internal fun SettingsDialogs(
             ProviderAxisSheet(
                 axis = axis,
                 selected = axes.on(axis),
+                appleAvailable = appleAvailable,
                 onSelect = { provider ->
                     // Only the axis being edited changes. The other two are
                     // left exactly as they were: a mixed app is a legal app,

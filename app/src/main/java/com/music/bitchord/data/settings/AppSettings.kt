@@ -391,8 +391,15 @@ object AppSettings {
      *
      * Only that axis changes. The other two are left exactly as they were,
      * which is the whole point of having three.
+     *
+     * Apple is the one exception: it is read through an installed Apple
+     * Music manifest, and without one there is nothing to read. An axis is
+     * therefore never pointed at Apple when the app already knows there is no
+     * manifest — a switch that promises Apple's catalogue and cannot deliver
+     * it is worse than one that refuses.
      */
     fun setProviderOn(axis: ProviderAxis, provider: MusicProvider) {
+        if (!appleAllowed(provider)) return
         val current = providerAxes.value
         val updated = when (axis) {
             ProviderAxis.UI -> current.copy(ui = provider)
@@ -419,6 +426,7 @@ object AppSettings {
      * both are pointed at it, and the older single setting follows.
      */
     fun setCatalogue(provider: MusicProvider) {
+        if (!appleAllowed(provider)) return
         val current = providerAxes.value
         val updated = current.copy(recommendation = provider, source = provider)
         if (updated != current) {
@@ -454,6 +462,7 @@ object AppSettings {
      * Apple's, and the app does not decide that only some of it may be.
      */
     fun setAllProviders(provider: MusicProvider) {
+        if (!appleAllowed(provider)) return
         val updated = ProviderAxes(
             ui = provider,
             recommendation = provider,
@@ -463,6 +472,20 @@ object AppSettings {
         providerAxes.value = updated
         persistProviderAxes(updated)
         mirrorCatalogue(provider)
+    }
+
+    /**
+     * Whether an axis may be pointed at this provider.
+     *
+     * Apple is read through an installed Apple Music manifest, so it is only
+     * offered when there is one. An unknown answer — the app has not looked
+     * yet — is allowed through: a listener who installs the addon and turns
+     * Apple on straight away must not be refused because the app had not
+     * been asked.
+     */
+    private fun appleAllowed(provider: MusicProvider): Boolean {
+        if (provider != MusicProvider.APPLE) return true
+        return com.music.bitchord.data.apple.AppleManifestLocator.isInstalledKnown() != false
     }
 
     /**

@@ -81,6 +81,10 @@ internal fun ProviderSettings(
         footer = stringResource(R.string.provider_footer),
     ) {
         val masterTitle = stringResource(R.string.provider_apple_master)
+        // The master switch is Apple's alone, and it only works with an
+        // Apple Music manifest installed: without one there is no Apple
+        // catalogue to read, so the switch is off and says so.
+        val appleReady = appleInstalled != false
         row(masterTitle, "apple", "master", "provider", "everything") {
             SettingsRow(
                 icon = Icons.Rounded.MusicNote,
@@ -89,6 +93,7 @@ internal fun ProviderSettings(
                 trailing = {
                     SettingsSwitch(
                         checked = axes.allApple,
+                        enabled = appleReady,
                         onCheckedChange = { wanted ->
                             AppSettings.setAllProviders(
                                 if (wanted) MusicProvider.APPLE else MusicProvider.YOUTUBE,
@@ -97,6 +102,7 @@ internal fun ProviderSettings(
                     )
                 },
                 onClick = {
+                    if (!appleReady) return@SettingsRow
                     AppSettings.setAllProviders(
                         if (axes.allApple) MusicProvider.YOUTUBE else MusicProvider.APPLE,
                     )
@@ -187,6 +193,7 @@ internal fun ProviderAxisSheet(
     axis: ProviderAxis,
     selected: MusicProvider,
     onSelect: (MusicProvider) -> Unit,
+    appleAvailable: Boolean = true,
 ) {
     val haptics = LocalHapticFeedback.current
     Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
@@ -233,10 +240,14 @@ internal fun ProviderAxisSheet(
         ) {
             MusicProvider.entries.forEach { provider ->
                 val chosen = provider == selected
+                // Apple is only offered when there is an Apple Music manifest
+                // installed: without one there is no Apple catalogue to read,
+                // so the axis could be pointed at nothing.
+                val available = provider != MusicProvider.APPLE || appleAvailable
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
+                        .clickable(enabled = available) {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onSelect(provider)
                         }
@@ -247,7 +258,11 @@ internal fun ProviderAxisSheet(
                         Text(
                             text = provider.localizedLabel(),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
+                            color = if (available) {
+                                MaterialTheme.colorScheme.onBackground
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         )
                         Text(
                             text = stringResource(

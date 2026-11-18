@@ -8,11 +8,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.R
+import com.music.bitchord.data.apple.AppleManifestLocator
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.util.AppRelaunch
 
@@ -96,12 +101,19 @@ internal fun HomeProviderPicker(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val axes by AppSettings.providerAxes.collectAsStateWithLifecycle()
     val catalogue = axes.source
+    // Apple is offered only when an Apple Music manifest is installed: the
+    // catalogue is read through it, and without it there is nothing to read.
+    var appleAvailable by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        appleAvailable = AppleManifestLocator.isInstalled()
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.background,
     ) {
         HomeProviderSheet(
             selected = catalogue,
+            appleAvailable = appleAvailable,
             onSelect = { provider ->
                 onDismiss()
                 if (provider != catalogue) {

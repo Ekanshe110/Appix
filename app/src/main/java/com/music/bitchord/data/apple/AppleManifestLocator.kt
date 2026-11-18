@@ -38,6 +38,14 @@ object AppleManifestLocator {
     private var cachedAt: Long = 0L
 
     /**
+     * What the last answer was: true when a manifest was found, false when
+     * the addons were asked and none of them was Apple's, and null when the
+     * question has not been asked yet.
+     */
+    @Volatile
+    private var lastInstalled: Boolean? = null
+
+    /**
      * The base URL of the installed Apple Music manifest, if there is one.
      *
      * Null means the listener has not installed an Apple Music manifest, and
@@ -52,11 +60,22 @@ object AppleManifestLocator {
         val found = find()
         cachedBaseUrl = found
         cachedAt = now
+        lastInstalled = found != null
         found
     }
 
     /** Whether an Apple Music manifest is installed. */
     suspend fun isInstalled(): Boolean = baseUrl() != null
+
+    /**
+     * Whether an Apple Music manifest is installed, as far as the last answer
+     * goes.
+     *
+     * Null when the question has not been asked yet: an unknown answer is not
+     * a "no", and a listener who has just installed the addon must not be
+     * told their manifest is missing because the app had not looked yet.
+     */
+    fun isInstalledKnown(): Boolean? = lastInstalled
 
     /**
      * Whether [configId] is the installed Apple Music manifest's own id.
