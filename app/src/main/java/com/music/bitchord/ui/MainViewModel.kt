@@ -49,6 +49,7 @@ import com.music.bitchord.auth.CapturedSession
 import com.music.bitchord.auth.WebSessionMode
 import com.music.bitchord.data.model.Account
 import com.music.bitchord.data.model.AccountChannel
+import com.music.bitchord.data.model.AppleLibraryContent
 import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.model.BrowseItem
 import com.music.bitchord.data.model.DetailPage
@@ -295,18 +296,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val explore: StateFlow<UiState<List<MoodGenreSection>>> = _explore.asStateFlow()
 
     /**
-     * Apple's own library — its playlists — for the Library page under
-     * Apple's look.
+     * Apple's own library — its playlists, albums and songs — for the Library
+     * page under Apple's look.
      *
      * Apple's library is the listener's own: their playlists, their albums,
-     * their songs. Under Apple's look the page shows Apple's playlists and
+     * their songs. Under Apple's look the page shows Apple's library and
      * nothing else, because a page that mixed YouTube's library into
      * Apple's is not Apple's page and not YouTube's either.
      */
-    private val _appleLibrary = MutableStateFlow<UiState<List<ShelfItem>>>(UiState.Loading)
-    val appleLibrary: StateFlow<UiState<List<ShelfItem>>> = _appleLibrary.asStateFlow()
+    private val _appleLibrary = MutableStateFlow<UiState<AppleLibraryContent>>(UiState.Loading)
+    val appleLibrary: StateFlow<UiState<AppleLibraryContent>> = _appleLibrary.asStateFlow()
 
-    /** Reads Apple's playlists. */
+    /**
+     * Reads Apple's library: the playlists, the albums and the songs, each
+     * as the rows Apple's own page draws them.
+     */
     fun loadAppleLibrary() {
         _appleLibrary.value = UiState.Loading
         viewModelScope.launch {
@@ -315,18 +319,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 _appleLibrary.value = UiState.Error(text(R.string.provider_apple_manifest_missing_subtitle))
                 return@launch
             }
-            com.music.bitchord.data.apple.AppleSources.library(handle, "playlists")
-                .onSuccess { items ->
-                    val rows = items.mapNotNull { it.shelfItem(handle.configId) }
-                    _appleLibrary.value = if (rows.isEmpty()) {
-                        UiState.Error(text(R.string.apple_library_empty))
-                    } else {
-                        UiState.Success(rows)
-                    }
-                }
-                .onFailure { failure ->
+            val playlists = com.music.bitchord.data.apple.AppleSources.libraryPlaylists(handle)
+                .getOrElse { failure ->
                     _appleLibrary.value = UiState.Error(failure.friendly())
+                    return@launch
                 }
+            val albums = com.music.bitchord.data.apple.AppleSources.libraryAlbums(handle)
+                .getOrDefault(emptyList())
+            val songs = com.music.bitchord.data.apple.AppleSources.librarySongs(handle)
+                .getOrDefault(emptyList())
+            _appleLibrary.value = if (playlists.isEmpty() && albums.isEmpty() && songs.isEmpty()) {
+                UiState.Error(text(R.string.apple_library_empty))
+            } else {
+                UiState.Success(
+                    AppleLibraryContent(
+                        // Apple's own order is kept: what was added recently
+                        // comes first, and the list below is the whole of it.
+                        recentlyAdded = playlists.take(8),
+                        albums = albums,
+                        songs = songs,
+                        playlists = playlists,
+                    ),
+                )
+            }
         }
     }
 
@@ -450,6 +465,56 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+
+    /**
+     * Apple's browse page — the New tab.
+     *
+     * Apple's own groups, read from Apple's catalogue: a page of the
+     * catalogue rather than a page of the listener's history, which is what
+     * makes it Apple's browse and not a second Home.
+     */
+    private val _appleBrowse = MutableStateFlow<UiState<List<HomeShelf>>>(UiState.Loading)
+    val appleBrowse: StateFlow<UiState<List<HomeShelf>>> = _appleBrowse.asStateFlow()
+
+    /**
+     * Reads Apple's browse groups for the New tab.
+     */
+    fun loadAppleBrowse() {        _appleBrowse.value = UiState.Loading
+        viewModelScope.launch {
+            val handle = com.music.bitchord.data.apple.AppleSources.handle()
+            if (handle == null) {
+                _appleBrowse.value =
+                    UiState.Error(text(R.string.provider_apple_manifest_missing_subtitle))
+                return@launch
+            }
+            com.music.bitchord.data.apple.AppleSources.home(handle)
+                .onSuccess { shelves ->
+                    _appleBrowse.value = if (shelves.isEmpty()) {
+                        UiState.Error(text(R.string.apple_browse_empty))
+                    } else {
+                        UiState.Success(shelves)
+                    }
+                }
+                .onFailure { failure ->
+                    _appleBrowse.value = UiState.Error(failure.friendly())
+                }
+        }
+    }
+
+    /**
+     * Loads Apple's browse page once, the first time the tab becomes visible.
+     *
+     * A later failure is left to the page's own Retry, the same rule the
+     * radio page follows: a network page nobody opened should not be on the
+     * wire before it is asked for.
+     */
+    fun ensureAppleBrowseLoaded() {
+        if (appleBrowseRequested) return
+        appleBrowseRequested = true
+        loadAppleBrowse()
+    }
+
+    private var appleBrowseRequested = false
 
     /**
      * The songs of one Apple station — what plays after the seed.
@@ -4480,7 +4545,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // return are Apple's rows — its own titles, covers and catalogue ids.
         if (browseId.startsWith(com.music.bitchord.data.apple.AppleSources.PAGE_PREFIX) ||
             browseId.startsWith(com.music.bitchord.data.apple.AppleSources.ALBUM_PREFIX) ||
-            browseId.startsWith(com.music.bitchord.data.apple.AppleSources.ARTIST_PREFIX)
+            browseId.startsWith(com.music.bitchord.data.apple.AppleSources.ARTIST_PREFIX) ||
+            browseId.startsWith(com.music.bitchord.data.apple.AppleSources.LIB_ALBUM_PREFIX)
         ) {
             openApplePage(browseId, title, subtitle, thumbnailUrl)
             return
@@ -4739,6 +4805,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     ) {
         val album = browseId.startsWith(com.music.bitchord.data.apple.AppleSources.ALBUM_PREFIX)
         val artist = browseId.startsWith(com.music.bitchord.data.apple.AppleSources.ARTIST_PREFIX)
+        val libraryAlbum =
+            browseId.startsWith(com.music.bitchord.data.apple.AppleSources.LIB_ALBUM_PREFIX)
         _detailStack.value += DetailPage(
             browseId = browseId,
             title = title,
@@ -4767,6 +4835,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     handle = handle,
                     kind = "artists",
                     id = browseId.removePrefix(com.music.bitchord.data.apple.AppleSources.ARTIST_PREFIX),
+                )
+                // An album of the listener's own: the library's copy, asked
+                // of the library, because that is where it lives.
+                libraryAlbum -> com.music.bitchord.data.apple.AppleSources.libraryTracks(
+                    handle = handle,
+                    collection = "albums",
+                    collectionId = browseId.removePrefix(com.music.bitchord.data.apple.AppleSources.LIB_ALBUM_PREFIX),
                 )
                 else -> com.music.bitchord.data.apple.AppleSources.libraryTracks(
                     handle = handle,

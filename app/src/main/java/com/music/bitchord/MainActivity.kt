@@ -81,6 +81,7 @@ import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.IosShare
+import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Sort
@@ -350,6 +351,7 @@ import com.music.bitchord.ui.screens.ItunesPodcastScreen
 import com.music.bitchord.ui.screens.ExploreScreen
 import com.music.bitchord.ui.screens.PodcastsScreen
 import com.music.bitchord.ui.screens.LocalMusicScreen
+import com.music.bitchord.ui.screens.AppleBrowseScreen
 import com.music.bitchord.ui.screens.AppleHomeScreen
 import com.music.bitchord.ui.screens.AppleLibraryScreen
 import com.music.bitchord.ui.screens.AppleRadioScreen
@@ -913,6 +915,9 @@ private fun BitChordApp(
     val searchSource by searchSourceState
     LaunchedEffect(nav.selectedTab) {
         if (nav.selectedTab == TAB_RADIO || nav.showGenres) viewModel.ensureRadioLoaded()
+        // Apple's browse page is read the first time its tab is opened, the
+        // same way the radio page is.
+        if (nav.selectedTab == TAB_APPLE_NEW) viewModel.ensureAppleBrowseLoaded()
         if (nav.selectedTab == TAB_SEARCH) {
             searchVisualActive = true
         } else {
@@ -1272,11 +1277,14 @@ private fun BitChordApp(
     val podcastListState = rememberLazyListState()
     val libraryListState = rememberLazyListState()
     val searchListState = rememberLazyListState()
+    // Apple's browse page, under Apple's look.
+    val appleNewListState = rememberLazyListState()
     val currentListState = when (nav.selectedTab) {
         TAB_HOME -> homeListState
         TAB_PODCASTS -> podcastListState
         TAB_RADIO -> if (selectedMoodGenre == null) radioListState else moodGenreListState
         TAB_LIBRARY -> libraryListState
+        TAB_APPLE_NEW -> appleNewListState
         else -> searchListState
     }
 
@@ -1355,9 +1363,16 @@ private fun BitChordApp(
     val radioLabel = stringResource(R.string.radio)
     val libraryLabel = stringResource(R.string.library)
     val searchLabel = stringResource(R.string.search)
+    val newLabel = stringResource(R.string.apple_new_tab)
     val queueLabel = stringResource(R.string.queue)
     val sharedLinkLabel = stringResource(R.string.shared_link)
     val quickPicksLabel = stringResource(R.string.quick_picks)
+    // Which catalogue's *look* the screens wear. Apple's own app has five
+    // tabs — Home, New, Radio, Library, Search — and this is where the New
+    // one comes from: under Apple's look the second slot is Apple's browse
+    // page rather than the podcasts, which Apple's app does not have either.
+    val providerAxes by AppSettings.providerAxes.collectAsStateWithLifecycle()
+    val appleLook = providerAxes.ui == com.music.bitchord.data.settings.MusicProvider.APPLE
     // The tabs, each with the constant that names it.
     //
     // The constant travels with the tab because the navbar can hold fewer
@@ -1366,20 +1381,27 @@ private fun BitChordApp(
     // tab is the second tab — so what the bar is given is the visible list,
     // and what comes back from a tap is an index into that list, which is
     // turned back into the tab it stands for here.
-    val tabDefs = remember(homeLabel, podcastsLabel, radioLabel, libraryLabel, searchLabel) {
-        listOf(
-            TAB_HOME to BottomTab(homeLabel, BitChordIcons.Home),
-            // Quick Picks is not a tab: it is a section of Home, with the
-            // arrow at the end of its heading opening the whole set. The
-            // navbar was crowded enough already.
-            TAB_PODCASTS to BottomTab(podcastsLabel, Icons.Rounded.GraphicEq),
-            TAB_RADIO to BottomTab(radioLabel, Icons.Rounded.Radio),
-            TAB_LIBRARY to BottomTab(libraryLabel, BitChordIcons.TabLibrary),
-            TAB_SEARCH to BottomTab(searchLabel, BitChordIcons.TabSearch),
-        )
+    val tabDefs = remember(homeLabel, podcastsLabel, radioLabel, libraryLabel, searchLabel, newLabel, appleLook) {
+        buildList {
+            add(TAB_HOME to BottomTab(homeLabel, BitChordIcons.Home))
+            if (appleLook) {
+                // Apple's browse page, in the slot Apple's own app keeps for
+                // it.
+                add(TAB_APPLE_NEW to BottomTab(newLabel, Icons.Rounded.NewReleases))
+            } else {
+                // Quick Picks is not a tab: it is a section of Home, with the
+                // arrow at the end of its heading opening the whole set. The
+                // navbar was crowded enough already.
+                add(TAB_PODCASTS to BottomTab(podcastsLabel, Icons.Rounded.GraphicEq))
+            }
+            add(TAB_RADIO to BottomTab(radioLabel, Icons.Rounded.Radio))
+            add(TAB_LIBRARY to BottomTab(libraryLabel, BitChordIcons.TabLibrary))
+            add(TAB_SEARCH to BottomTab(searchLabel, BitChordIcons.TabSearch))
+        }
     }
     // Podcasts off means the tab is gone, not greyed out: a tab that leads
-    // nowhere is a tab that lies.
+    // nowhere is a tab that lies. Under Apple's look there is no podcasts tab
+    // to begin with — Apple's own app has none.
     val visibleTabDefs = tabDefs.filter { it.first != TAB_PODCASTS || podcastsEnabled }
 
     val scope = rememberCoroutineScope()
@@ -3215,6 +3237,8 @@ private fun BitChordApp(
         val explorePull = rememberPullToRefreshState()
         val podcastPull = rememberPullToRefreshState()
         val libraryPull = rememberPullToRefreshState()
+        // Apple's browse page, under Apple's look.
+        val appleNewPull = rememberPullToRefreshState()
         // The Library's segment — Playlists, the device's own, Artists, Albums.
         //
         // Held here because the Library page leaves composition entirely when a
@@ -3888,6 +3912,7 @@ private fun BitChordApp(
             podcast = podcastListState,
             library = libraryListState,
             search = searchListState,
+            appleNew = appleNewListState,
             quickPicks = quickPicksListState,
             continueListening = continueListeningListState,
             history = historyListState,
@@ -3898,6 +3923,7 @@ private fun BitChordApp(
             explorePull = explorePull,
             podcastPull = podcastPull,
             libraryPull = libraryPull,
+            appleNewPull = appleNewPull,
         )
         // What the pages can do — see [PageActions].
         val pageActions = PageActions(
@@ -4929,6 +4955,8 @@ private fun RootPage(
     val exploreState by viewModel.explore.collectAsStateWithLifecycle()
     // Apple's own stations, for the Radio page under Apple's look.
     val appleRadioState by viewModel.appleRadio.collectAsStateWithLifecycle()
+    // Apple's browse groups, for the New page under Apple's look.
+    val appleBrowseState by viewModel.appleBrowse.collectAsStateWithLifecycle()
     // Apple's own library, for the Library page under Apple's look.
     val appleLibraryState by viewModel.appleLibrary.collectAsStateWithLifecycle()
     val podcastsState by viewModel.podcasts.collectAsStateWithLifecycle()
@@ -5789,6 +5817,21 @@ private fun RootPage(
             pullState = scroll.podcastPull,
             contentPadding = listPadding,
         )
+        TAB_APPLE_NEW -> AppleBrowseScreen(
+            // Apple's browse page: Apple's own groups, drawn the way Apple's
+            // own browse page draws them. The look axis decides that this
+            // page exists; the content is Apple's either way.
+            state = appleBrowseState,
+            listState = scroll.appleNew,
+            onItemClick = onHomeItemClick,
+            onItemLongPress = pageActions.onShelfLongPress,
+            onRetry = viewModel::loadAppleBrowse,
+            refreshing = false,
+            onRefresh = { viewModel.loadAppleBrowse() },
+            pullState = scroll.appleNewPull,
+            contentPadding = listPadding,
+            title = stringResource(R.string.apple_new_tab),
+        )
         TAB_RADIO -> if (appleUi) {
             // Apple's radio: its own stations, live ones marked and opened in
             // Apple's player, seeded ones played here. No Flow, and no
@@ -6106,6 +6149,7 @@ private fun RootPage(
             // Apple's library: the listener's own playlists, and nothing
             // else. Another service's library under Apple's heading is not
             // Apple's library.
+            val appleLibraryLabel = stringResource(R.string.library)
             AppleLibraryScreen(
                 state = appleLibraryState,
                 listState = scroll.library,
@@ -6119,6 +6163,15 @@ private fun RootPage(
                             thumbnailUrl = item.thumbnailUrl,
                         )
                     }
+                },
+                onSongClick = { song ->
+                    // A song of the listener's own plays where it stands,
+                    // the way a song plays in Apple's own library.
+                    pageActions.playFrom(
+                        listOf(song),
+                        0,
+                        QueueSource(appleLibraryLabel, PlaybackSourceType.LIBRARY),
+                    )
                 },
                 onRetry = viewModel::loadAppleLibrary,
                 refreshing = MainViewModel.Feed.LIBRARY in refreshing,
@@ -6302,6 +6355,8 @@ private data class PageScrollStates(
     val podcast: LazyListState,
     val library: LazyListState,
     val search: LazyListState,
+    /** Apple's browse page, under Apple's look. */
+    val appleNew: LazyListState,
     val quickPicks: LazyListState,
     val continueListening: LazyListState,
     val history: LazyListState,
@@ -6312,6 +6367,8 @@ private data class PageScrollStates(
     val explorePull: androidx.compose.material3.pulltorefresh.PullToRefreshState,
     val podcastPull: androidx.compose.material3.pulltorefresh.PullToRefreshState,
     val libraryPull: androidx.compose.material3.pulltorefresh.PullToRefreshState,
+    /** Apple's browse page, under Apple's look. */
+    val appleNewPull: androidx.compose.material3.pulltorefresh.PullToRefreshState,
 )
 
 /**
@@ -8316,6 +8373,14 @@ private const val TAB_PODCASTS = 1
 private const val TAB_RADIO = 2
 private const val TAB_LIBRARY = 3
 private const val TAB_SEARCH = 4
+
+/**
+ * Apple's browse page, in the slot Apple's own app keeps for it.
+ *
+ * Only drawn under Apple's look: the tab is Apple's, and the look is what
+ * puts it there.
+ */
+private const val TAB_APPLE_NEW = 5
 
 /**
  * What a tab's key is prefixed with in the content switcher above.

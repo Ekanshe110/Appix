@@ -1,10 +1,14 @@
 package com.music.bitchord.playback
 
+import android.app.Application
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.music.bitchord.data.model.Song
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 
 /**
  * A live station has to play *here*.
@@ -16,7 +20,12 @@ import org.junit.Test
  * stream's own address and the endpoint the device trades its challenge
  * for a license at. Drop either and the row becomes an ordinary track with
  * nothing to play.
+ *
+ * Robolectric, because a MediaItem's address is an `android.net.Uri`, and the
+ * stub android.jar the plain unit tests run against returns nothing for it.
  */
+@RunWith(AndroidJUnit4::class)
+@Config(sdk = [34], application = Application::class)
 class LiveRadioPlaybackTest {
 
     private fun liveSong(

@@ -305,4 +305,8 @@
     <string name="queue_suggest_album">From album</string>
     <string name="queue_search_nothing_here">Nothing here yet</string>
     <string name="home_chip_all">All</string>
+    <string name="apple_recently_added">Recently Added</string>
+    <string name="apple_albums">Albums</string>
+    <string name="apple_songs">Songs</string>
+    <string name="apple_playlists">Playlists</string>
 </resources>

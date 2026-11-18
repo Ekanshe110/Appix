@@ -39,6 +39,16 @@ internal object AppleSources {
     const val STATION_PREFIX = "apple:station:"
 
     /**
+     * An album in the listener's own library.
+     *
+     * A library album is not a catalogue album: it is the listener's own
+     * copy, and Apple knows it by a library id rather than a catalogue one.
+     * It gets its own prefix so the two are never confused — opening a
+     * library album has to ask the library, not the catalogue.
+     */
+    const val LIB_ALBUM_PREFIX = "apple:libalbum:"
+
+    /**
      * The installed Apple Music manifest, as the two things the app needs
      * from it: where to ask, and which source its ids belong to.
      */
@@ -158,6 +168,60 @@ internal object AppleSources {
     ): Result<List<AppleItem>> =
         AppleCatalogue.stationTracks(handle.baseUrl, stationId)
 
+    /**
+     * The listener's own playlists, as the rows the Library page draws.
+     *
+     * A playlist is opened as a page of its own tracks, and it is opened by
+     * the library id: it is the listener's own copy, and the catalogue's id
+     * for the same recording is not the same thing.
+     */
+    suspend fun libraryPlaylists(handle: Handle, limit: Int = 50): Result<List<ShelfItem>> =
+        AppleCatalogue.library(handle.baseUrl, "playlists", 0, limit).map { items ->
+            items.mapNotNull { item ->
+                if (item.title.isBlank()) return@mapNotNull null
+                ShelfItem(
+                    title = item.title,
+                    subtitle = item.artist,
+                    thumbnailUrl = item.artworkURL,
+                    videoId = null,
+                    browseId = PAGE_PREFIX + item.id,
+                )
+            }
+        }
+
+    /** The listener's own albums, as the tiles the Library page shows. */
+    suspend fun libraryAlbums(handle: Handle, limit: Int = 50): Result<List<ShelfItem>> =
+        AppleCatalogue.library(handle.baseUrl, "albums", 0, limit).map { items ->
+            items.mapNotNull { item ->
+                if (item.title.isBlank()) return@mapNotNull null
+                ShelfItem(
+                    title = item.title,
+                    subtitle = item.artist,
+                    thumbnailUrl = item.artworkURL,
+                    videoId = null,
+                    browseId = LIB_ALBUM_PREFIX + item.id,
+                )
+            }
+        }
+
+    /** The listener's own songs, as the rows that play. */
+    suspend fun librarySongs(handle: Handle, limit: Int = 50): Result<List<Song>> =
+        AppleCatalogue.library(handle.baseUrl, "songs", 0, limit).map { items ->
+            items.mapNotNull { item ->
+                val id = item.catalogId?.takeIf { it.isNotBlank() } ?: item.id
+                if (id.isBlank() || item.title.isBlank()) return@mapNotNull null
+                Song(
+                    videoId = SourceRegistry.trackKey(handle.configId, id),
+                    title = item.title,
+                    artist = item.artist,
+                    thumbnailUrl = item.artworkURL,
+                    durationText = item.runtimeMs.takeIf { it > 0 }?.let(::durationText),
+                    albumName = item.album.takeIf { it.isNotBlank() },
+                    sourceQuality = item.audioQuality,
+                )
+            }
+        }
+
     // ── Rows ──────────────────────────────────────────────────────────────
 }
 
@@ -177,7 +241,10 @@ internal fun AppleItem.song(configId: String): Song = Song(
 )
 
 /** The card this app draws for the row. */
-internal fun AppleItem.shelfItem(configId: String): ShelfItem? {
+internal fun AppleItem.shelfItem(
+    configId: String,
+    albumBrowsePrefix: String = AppleSources.ALBUM_PREFIX,
+): ShelfItem? {
     if (title.isBlank()) return null
     return when (type.lowercase()) {
         "song" -> ShelfItem(
@@ -186,6 +253,13 @@ internal fun AppleItem.shelfItem(configId: String): ShelfItem? {
             thumbnailUrl = artworkURL,
             videoId = SourceRegistry.trackKey(configId, id),
             browseId = null,
+        )
+        "album" -> ShelfItem(
+            title = title,
+            subtitle = artist,
+            thumbnailUrl = artworkURL,
+            videoId = null,
+            browseId = albumBrowsePrefix + id,
         )
         else -> ShelfItem(
             title = title,
@@ -226,8 +300,8 @@ internal fun durationText(ms: Long): String {
     return "%d:%02d".format(total / 60, total % 60)
 }
 
-/**
- * The station, as the radio page draws it.
+    /**
+     * The station, as the radio page draws it.
  *
  * A live station carries Apple's own address rather than audio: its stream
  * is Widevine-protected and only Apple's player plays it, so the page opens

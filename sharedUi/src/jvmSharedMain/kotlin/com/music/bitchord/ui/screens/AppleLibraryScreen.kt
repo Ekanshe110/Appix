@@ -2,17 +2,20 @@ package com.music.bitchord.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,8 +30,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.music.bitchord.data.model.AppleLibraryContent
+import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.ShelfItem
+import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.UiState
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.ui.components.longPressMenuClickable
@@ -43,16 +49,20 @@ import com.music.bitchord.sharedui.resources.*
  * The Library page, in Apple's own shape.
  *
  * Apple's library is the listener's own — their playlists, their albums,
- * their songs — and under Apple's look the page shows Apple's playlists and
+ * their songs — and under Apple's look the page shows Apple's library and
  * nothing else. A page that mixed another service's library into Apple's is
  * neither Apple's page nor the other one's.
+ *
+ * The order is Apple's: what was added recently first, as a row of tiles;
+ * then the albums; then the songs; and the playlists last, as a list.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppleLibraryScreen(
-    state: UiState<List<ShelfItem>>,
+    state: UiState<AppleLibraryContent>,
     listState: LazyListState,
     onItemClick: (ShelfItem) -> Unit,
+    onSongClick: (Song) -> Unit,
     onItemLongPress: ((ShelfItem) -> Unit)? = null,
     onRetry: () -> Unit,
     refreshing: Boolean,
@@ -97,11 +107,127 @@ fun AppleLibraryScreen(
                         onAction = onRetry,
                     )
                 }
-                is UiState.Success -> items(page.data, key = { "apple-library:${it.title}" }) { item ->
-                    AppleLibraryRow(
-                        item = item,
+                is UiState.Success -> {
+                    val content = page.data
+                    if (content.recentlyAdded.isNotEmpty()) {
+                        item(key = "apple-library:recent-header") {
+                            AppleSectionHeader(stringResource(Res.string.apple_recently_added))
+                        }
+                        item(key = "apple-library:recent") {
+                            AppleTileRow(
+                                items = content.recentlyAdded,
+                                onItemClick = onItemClick,
+                                onItemLongPress = onItemLongPress,
+                            )
+                        }
+                    }
+                    if (content.albums.isNotEmpty()) {
+                        item(key = "apple-library:albums-header") {
+                            AppleSectionHeader(stringResource(Res.string.apple_albums))
+                        }
+                        item(key = "apple-library:albums") {
+                            AppleTileRow(
+                                items = content.albums,
+                                onItemClick = onItemClick,
+                                onItemLongPress = onItemLongPress,
+                            )
+                        }
+                    }
+                    if (content.songs.isNotEmpty()) {
+                        item(key = "apple-library:songs-header") {
+                            AppleSectionHeader(stringResource(Res.string.apple_songs))
+                        }
+                        items(content.songs, key = { "apple-library:song:${it.videoId}" }) { song ->
+                            AppleLibrarySongRow(
+                                song = song,
+                                onClick = { onSongClick(song) },
+                            )
+                        }
+                    }
+                    if (content.playlists.isNotEmpty()) {
+                        item(key = "apple-library:playlists-header") {
+                            AppleSectionHeader(stringResource(Res.string.apple_playlists))
+                        }
+                        items(content.playlists, key = { "apple-library:playlist:${it.videoId}" }) { playlist ->
+                            AppleLibraryRow(
+                                item = playlist,
+                                onClick = { onItemClick(playlist) },
+                                onLongPress = onItemLongPress?.let { { it(playlist) } },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** The heading over one section of the page. */
+@Composable
+private fun AppleSectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(
+            start = PAGE_GUTTER,
+            end = PAGE_GUTTER,
+            top = 18.dp,
+            bottom = 8.dp,
+        ),
+    )
+}
+
+/**
+ * A row of tiles, the way Apple draws the things it leads a page with.
+ *
+ * A row of large covers, each with its name under it: the playlist or album
+ * itself, not a track from it.
+ */
+@Composable
+private fun AppleTileRow(
+    items: List<ShelfItem>,
+    onItemClick: (ShelfItem) -> Unit,
+    onItemLongPress: ((ShelfItem) -> Unit)?,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        items(items, key = { "apple-tile:${it.videoId}" }) { item ->
+            Column(
+                modifier = Modifier
+                    .width(150.dp)
+                    .longPressMenuClickable(
                         onClick = { onItemClick(item) },
-                        onLongPress = onItemLongPress?.let { { it(item) } },
+                        onLongClick = onItemLongPress?.let { { it(item) } },
+                    ),
+            ) {
+                AsyncImage(
+                    model = item.thumbnailUrl?.artworkAt(CARD_ART_PX),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(150.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (item.subtitle.isNotBlank()) {
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -109,10 +235,58 @@ fun AppleLibraryScreen(
     }
 }
 
-/** One row of the library: the playlist's own cover and its name. */
+/**
+ * One of the listener's own songs.
+ *
+ * A song, not a collection: it plays where it stands rather than opening a
+ * page of its own.
+ */
 @Composable
-private fun AppleLibraryRow(
-    item: ShelfItem,
+private fun AppleLibrarySongRow(
+    song: Song,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = PAGE_GUTTER, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AsyncImage(
+            model = song.thumbnailUrl?.artworkAt(ROW_ART_PX),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(58.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = song.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (song.artist.isNotBlank()) {
+                Text(
+                    text = song.artist,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/** One row of the library: the item's own cover and its name. */
+@Composable
+private fun AppleLibraryRow(    item: ShelfItem,
     onClick: () -> Unit,
     onLongPress: (() -> Unit)?,
 ) {

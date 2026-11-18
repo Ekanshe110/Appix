@@ -385,6 +385,8 @@ enum class PlaybackSourceType {
     QUEUE,
     /** A radio station — Apple's own, or any other catalogue's. */
     RADIO,
+    /** A row of the listener's own library. */
+    LIBRARY,
 }
 
 /** A non-track search result: album, artist or playlist. */
@@ -436,6 +438,25 @@ data class ShelfItem(
      * not a statement about popularity.
      */
     val popularity: Int? = null,
+)
+
+/**
+ * Apple's library, as the page draws it.
+ *
+ * Apple's Library page is not one list: it leads with what was added
+ * recently, then the albums, then the songs, and only then the playlists.
+ * Each of those is the listener's own, so none of them is another
+ * catalogue's.
+ */
+data class AppleLibraryContent(
+    /** The newest playlists, as the tiles at the head of the page. */
+    val recentlyAdded: List<ShelfItem> = emptyList(),
+    /** The listener's albums. */
+    val albums: List<ShelfItem> = emptyList(),
+    /** The listener's songs, as the rows that play. */
+    val songs: List<Song> = emptyList(),
+    /** The listener's playlists. */
+    val playlists: List<ShelfItem> = emptyList(),
 )
 
 /** The signed-in Google account, as YouTube Music reports it. */

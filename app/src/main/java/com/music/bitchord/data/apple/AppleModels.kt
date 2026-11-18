@@ -34,6 +34,15 @@ data class AppleShelf(
 data class AppleItem(
     @SerialName("type") val type: String = "song",
     @SerialName("id") val id: String = "",
+    /**
+     * The catalogue id of a library row, when the addon published one.
+     *
+     * A row in the listener's own library is identified by a library id,
+     * which is not the id the catalogue knows it by — and the catalogue id
+     * is the one the audio is asked for. Null on a row that came from the
+     * catalogue in the first place, where the two are the same.
+     */
+    @SerialName("catalogId") val catalogId: String? = null,
     @SerialName("title") val title: String = "",
     @SerialName("artist") val artist: String = "",
     @SerialName("album") val album: String = "",

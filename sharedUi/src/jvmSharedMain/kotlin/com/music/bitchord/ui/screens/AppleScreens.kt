@@ -178,6 +178,86 @@ fun AppleHomeScreen(
 }
 
 /**
+ * The New page, in Apple's own shape.
+ *
+ * Apple's New tab is the browse page: every group Apple offers, drawn as a
+ * two-column grid of cards the way Apple's own browse page draws them. The
+ * Home page leads with one large card and a few of these; this page is the
+ * whole of Apple's browse, which is what the tab is for.
+ *
+ * The content is Apple's own groups, read from Apple's catalogue through the
+ * installed manifest — so this page is Apple's whatever else the app is
+ * playing, and it is a page of the catalogue rather than a page of the
+ * listener's history.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppleBrowseScreen(
+    state: UiState<List<HomeShelf>>,
+    listState: LazyListState,
+    onItemClick: (ShelfItem, String) -> Unit,
+    onItemLongPress: ((ShelfItem) -> Unit)? = null,
+    onRetry: () -> Unit,
+    refreshing: Boolean,
+    onRefresh: () -> Unit,
+    pullState: PullToRefreshState,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues,
+    title: String? = null,
+) {
+    PullToRefresh(
+        refreshing = refreshing,
+        onRefresh = onRefresh,
+        state = pullState,
+        modifier = modifier,
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = contentPadding,
+        ) {
+            if (title != null) {
+                item(key = "apple-browse:title") {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(
+                            start = PAGE_GUTTER,
+                            end = PAGE_GUTTER,
+                            top = 12.dp,
+                            bottom = 14.dp,
+                        ),
+                    )
+                }
+            }
+            when (val page = state) {
+                is UiState.Loading -> feedSkeleton(firstIsHero = false)
+                is UiState.Error -> item(key = "apple-browse:error") {
+                    MessageState(
+                        message = page.message,
+                        actionLabel = stringResource(Res.string.retry),
+                        onAction = onRetry,
+                    )
+                }
+                is UiState.Success -> {
+                    val shelves = page.data
+                    if (shelves.isNotEmpty()) {
+                        item(key = "apple-browse:grid") {
+                            AppleShelfGrid(
+                                shelves = shelves,
+                                onItemClick = onItemClick,
+                                onItemLongPress = onItemLongPress,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * The large card at the head of the page.
  *
  * A cover with the title laid over it, the way Apple's own head card is
