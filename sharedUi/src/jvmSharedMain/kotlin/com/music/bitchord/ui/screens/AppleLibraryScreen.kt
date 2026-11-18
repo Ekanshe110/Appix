@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -113,9 +113,15 @@ fun AppleLibraryScreen(
                         item(key = "apple-library:recent-header") {
                             AppleSectionHeader(stringResource(Res.string.apple_recently_added))
                         }
-                        item(key = "apple-library:recent") {
+                        // Two across, as Apple's own grid is: a row of tiles
+                        // is a shelf, and this one is a shelf of the
+                        // listener's own newest playlists.
+                        items(
+                            content.recentlyAdded.chunked(2),
+                            key = { "apple-library:recent:${it.first().videoId}" },
+                        ) { row ->
                             AppleTileRow(
-                                items = content.recentlyAdded,
+                                items = row,
                                 onItemClick = onItemClick,
                                 onItemLongPress = onItemLongPress,
                             )
@@ -190,15 +196,16 @@ private fun AppleTileRow(
     onItemClick: (ShelfItem) -> Unit,
     onItemLongPress: ((ShelfItem) -> Unit)?,
 ) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = PAGE_GUTTER, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        items(items, key = { "apple-tile:${it.videoId}" }) { item ->
+        items.forEach { item ->
             Column(
                 modifier = Modifier
-                    .width(150.dp)
+                    .weight(1f)
                     .longPressMenuClickable(
                         onClick = { onItemClick(item) },
                         onLongClick = onItemLongPress?.let { { it(item) } },
@@ -209,7 +216,8 @@ private fun AppleTileRow(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(150.dp)
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
                         .clip(RoundedCornerShape(10.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 )
@@ -231,6 +239,10 @@ private fun AppleTileRow(
                     )
                 }
             }
+        }
+        // A row of one tile is still two columns wide.
+        repeat(2 - items.size) {
+            Spacer(Modifier.weight(1f))
         }
     }
 }

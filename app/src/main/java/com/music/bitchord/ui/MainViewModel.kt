@@ -440,6 +440,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val appleRadio: StateFlow<UiState<List<RadioStation>>> = _appleRadio.asStateFlow()
 
     /**
+     * The stations other broadcasters run, for the Radio page under Apple's
+     * look.
+     *
+     * Apple's own page keeps them in a row of their own, under the name of
+     * whoever runs them.
+     */
+    private val _appleInternationalRadio = MutableStateFlow<UiState<List<RadioStation>>>(UiState.Loading)
+    val appleInternationalRadio: StateFlow<UiState<List<RadioStation>>> =
+        _appleInternationalRadio.asStateFlow()
+
+    /**
      * Reads Apple's stations: the listener's own, the editorial ones and the
      * live ones, in Apple's own order.
      */
@@ -463,6 +474,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             } else {
                 UiState.Success(rows)
             }
+            // The international row is read alongside: a page that showed
+            // Apple's own stations and left the others out would be a
+            // shorter page than Apple's, and the others are live too.
+            com.music.bitchord.data.apple.AppleSources.internationalStations(handle)
+                .onSuccess { international ->
+                    _appleInternationalRadio.value = UiState.Success(international)
+                }
+                .onFailure {
+                    _appleInternationalRadio.value = UiState.Success(emptyList())
+                }
         }
     }
 

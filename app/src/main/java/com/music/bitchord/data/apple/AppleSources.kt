@@ -169,6 +169,18 @@ internal object AppleSources {
         AppleCatalogue.stationTracks(handle.baseUrl, stationId)
 
     /**
+     * The stations other broadcasters run, as the rows the Radio page draws.
+     *
+     * They are Apple's own page's "International Broadcasters" row: live
+     * streams from other people, with the broadcaster's own name under the
+     * station's.
+     */
+    suspend fun internationalStations(handle: Handle, limit: Int = 12): Result<List<RadioStation>> =
+        AppleCatalogue.internationalStations(handle.baseUrl, limit).map { rows ->
+            rows.map { it.station() }
+        }
+
+    /**
      * The listener's own playlists, as the rows the Library page draws.
      *
      * A playlist is opened as a page of its own tracks, and it is opened by
@@ -314,6 +326,7 @@ internal fun AppleStation.station(): RadioStation = RadioStation(
     artworkUrl = artworkURL,
     isLive = isLive == true,
     deepLink = url?.takeIf { it.startsWith("http://") || it.startsWith("https://") },
+    provider = provider,
 )
 
 /**

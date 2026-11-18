@@ -218,6 +218,23 @@ object AppleCatalogue {
             AppleStationList.serializer(),
         ).map { it.stations }
 
+    /**
+     * The stations other broadcasters run, which Apple lists separately.
+     *
+     * They are live in the same way Apple's own are, and they come from
+     * other people — which is what the row under them says.
+     */
+    suspend fun internationalStations(
+        baseUrl: String,
+        limit: Int = 12,
+    ): Result<List<AppleStation>> =
+        get(
+            baseUrl,
+            listOf("radio", "international"),
+            mapOf("limit" to limit.toString()),
+            AppleStationList.serializer(),
+        ).map { it.stations }
+
     /** Apple's own station search. */
     suspend fun searchStations(
         baseUrl: String,

@@ -229,6 +229,8 @@ internal fun PortraitControlDeck(
             TransportRow(
                 isPlaying = isPlaying,
                 isLoading = isLoading || audioVersionSwitching,
+                // A live station has no track to step through.
+                liveRadio = durationMs <= 0L,
                 previousEnabled = previousEnabled,
                 nextEnabled = nextEnabled,
                 onPrevious = onPrevious,

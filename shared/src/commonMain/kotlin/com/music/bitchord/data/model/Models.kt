@@ -778,6 +778,13 @@ data class RadioStation(
      * rather than offering a tap that goes nowhere.
      */
     val deepLink: String? = null,
+    /**
+     * Who broadcasts it.
+     *
+     * Apple's own stations say "Apple Music"; the international ones say who
+     * else runs them. It is what Apple's own page puts under the name.
+     */
+    val provider: String? = null,
 )
 
 /**

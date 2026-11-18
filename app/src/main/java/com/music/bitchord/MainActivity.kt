@@ -4960,6 +4960,8 @@ private fun RootPage(
     val exploreState by viewModel.explore.collectAsStateWithLifecycle()
     // Apple's own stations, for the Radio page under Apple's look.
     val appleRadioState by viewModel.appleRadio.collectAsStateWithLifecycle()
+    // The stations other broadcasters run, for the Radio page under Apple's look.
+    val appleInternationalRadioState by viewModel.appleInternationalRadio.collectAsStateWithLifecycle()
     // Apple's browse groups, for the New page under Apple's look.
     val appleBrowseState by viewModel.appleBrowse.collectAsStateWithLifecycle()
     // Apple's own library, for the Library page under Apple's look.
@@ -5843,6 +5845,7 @@ private fun RootPage(
             // "search a station" — neither is Apple's.
             AppleRadioScreen(
                 state = appleRadioState,
+                international = appleInternationalRadioState,
                 listState = scroll.radio,
                 onStationClick = { station ->
                     if (station.isLive) {

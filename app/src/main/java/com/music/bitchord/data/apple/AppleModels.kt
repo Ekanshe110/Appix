@@ -134,6 +134,8 @@ data class AppleStation(
     @SerialName("subtitle") val subtitle: String? = null,
     @SerialName("artworkURL") val artworkURL: String? = null,
     @SerialName("url") val url: String? = null,
+    /** Who broadcasts it: "Apple Music" for Apple's own, the broadcaster's own name otherwise. */
+    @SerialName("provider") val provider: String? = null,
 )
 
 /** A list of Apple stations. */

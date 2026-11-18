@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,8 +49,12 @@ import com.music.bitchord.sharedui.resources.*
  * The Radio page, in Apple's own shape.
  *
  * Apple's radio is its stations and nothing else: the live ones, marked LIVE
- * and opened in Apple's own player because their audio is Widevine-protected,
- * and the seeded ones, which are queues of songs and play here.
+ * and played here, and the seeded ones, which are queues of songs and play
+ * here too.
+ *
+ * The page is laid out the way Apple's own is: the grid of station logos at
+ * the head of it, then a row of stations by what they play, then the
+ * international broadcasters, and then the stations themselves.
  *
  * There is no Flow tile and no "search a station" row. Neither is Apple's,
  * and a page that offers them is not Apple's page — they belong to the other
@@ -59,6 +64,7 @@ import com.music.bitchord.sharedui.resources.*
 @Composable
 fun AppleRadioScreen(
     state: UiState<List<RadioStation>>,
+    international: UiState<List<RadioStation>>,
     listState: LazyListState,
     onStationClick: (RadioStation) -> Unit,
     onRetry: () -> Unit,
@@ -117,6 +123,31 @@ fun AppleRadioScreen(
                                 onStationClick = onStationClick,
                             )
                         }
+                        // The stations by what they play: Apple's own row of
+                        // genre stations, which are live in the same way.
+                        item(key = "apple-radio:genre-header") {
+                            AppleRadioHeader(stringResource(Res.string.apple_stations_by_genre))
+                        }
+                        item(key = "apple-radio:genre") {
+                            AppleStationCarousel(
+                                stations = live,
+                                onStationClick = onStationClick,
+                            )
+                        }
+                    }
+                    // The international broadcasters: other people's stations,
+                    // live in the same way, with their own names under them.
+                    val others = (international as? UiState.Success)?.data.orEmpty()
+                    if (others.isNotEmpty()) {
+                        item(key = "apple-radio:international-header") {
+                            AppleRadioHeader(stringResource(Res.string.apple_international_broadcasters))
+                        }
+                        item(key = "apple-radio:international") {
+                            AppleStationCarousel(
+                                stations = others,
+                                onStationClick = onStationClick,
+                            )
+                        }
                     }
                     items(stations, key = { "apple-radio:${it.id}" }) { station ->
                         AppleStationRow(station = station, onClick = { onStationClick(station) })
@@ -127,11 +158,28 @@ fun AppleRadioScreen(
     }
 }
 
+/** The heading over one of the page's rows, with the chevron Apple's have. */
+@Composable
+private fun AppleRadioHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(
+            start = PAGE_GUTTER,
+            end = PAGE_GUTTER,
+            top = 20.dp,
+            bottom = 10.dp,
+        ),
+    )
+}
+
 /**
  * One row of the grid of station logos.
  *
- * Three tiles across, each a square of the station's own artwork with its
- * name under it — the shape Apple's own Radio page opens with.
+ * Three tiles across, each a square of the station's own artwork — the shape
+ * Apple's own Radio page opens with, where the logo is the whole of the
+ * tile and the name is on the station's own page.
  */
 @Composable
 private fun AppleStationGridRow(
@@ -145,30 +193,17 @@ private fun AppleStationGridRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         stations.forEach { station ->
-            Column(
+            AsyncImage(
+                model = station.artworkUrl?.artworkAt(CARD_ART_PX),
+                contentDescription = station.name,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .weight(1f)
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onStationClick(station) },
-            ) {
-                AsyncImage(
-                    model = station.artworkUrl?.artworkAt(CARD_ART_PX),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = station.name,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            )
         }
         // A row of two tiles is still three columns wide.
         repeat(3 - stations.size) {
@@ -178,11 +213,63 @@ private fun AppleStationGridRow(
 }
 
 /**
+ * A horizontal run of stations: the artwork, the station's name, and who
+ * broadcasts it.
+ */
+@Composable
+private fun AppleStationCarousel(
+    stations: List<RadioStation>,
+    onStationClick: (RadioStation) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        items(stations, key = { "apple-radio:carousel:${it.id}" }) { station ->
+            Column(
+                modifier = Modifier
+                    .width(150.dp)
+                    .clickable { onStationClick(station) },
+            ) {
+                AsyncImage(
+                    model = station.artworkUrl?.artworkAt(CARD_ART_PX),
+                    contentDescription = station.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = station.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val provider = station.provider
+                if (!provider.isNullOrBlank()) {
+                    Text(
+                        text = provider,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
  * One station.
  *
- * The LIVE mark is Apple's own: a live station is a continuous stream that
- * only Apple's player can decode, so the row says so rather than offering a
- * play that would fail.
+ * The LIVE mark is Apple's own: a live station is a continuous stream, and
+ * the mark says that the row plays here rather than being a page.
  */
 @Composable
 private fun AppleStationRow(

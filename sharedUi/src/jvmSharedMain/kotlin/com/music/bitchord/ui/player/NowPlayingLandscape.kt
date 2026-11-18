@@ -363,6 +363,8 @@ internal fun LandscapeNowPlaying(
                         TransportRow(
                             isPlaying = isPlaying,
                             isLoading = isLoading || audioVersionSwitching,
+                            // A live station has no track to step through.
+                            liveRadio = durationMs <= 0L,
                             previousEnabled = !controlsLocked &&
                                 (hasPrevious || pastRestartPoint()),
                             nextEnabled = !controlsLocked && hasNext,
