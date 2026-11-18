@@ -123,6 +123,20 @@ fun AppleRadioScreen(
                                 onStationClick = onStationClick,
                             )
                         }
+                        // "On Air Now": the broadcast itself, in a large
+                        // card with the station's name under it. Apple's own
+                        // page carries the live schedule here; the schedule
+                        // is Apple's and not published, so the card names the
+                        // station and says who broadcasts it.
+                        item(key = "apple-radio:onair-header") {
+                            AppleRadioHeader(stringResource(Res.string.apple_on_air_now))
+                        }
+                        item(key = "apple-radio:onair") {
+                            AppleOnAirRow(
+                                stations = live,
+                                onStationClick = onStationClick,
+                            )
+                        }
                         // The stations by what they play: Apple's own row of
                         // genre stations, which are live in the same way.
                         item(key = "apple-radio:genre-header") {
@@ -208,6 +222,58 @@ private fun AppleStationGridRow(
         // A row of two tiles is still three columns wide.
         repeat(3 - stations.size) {
             Spacer(Modifier.weight(1f))
+        }
+    }
+}
+
+/**
+ * The broadcast itself: a large card with the station's logo and its name.
+ *
+ * The card is the size Apple's own is — nearly the width of the page — so
+ * that the station being heard is the thing the eye lands on.
+ */
+@Composable
+private fun AppleOnAirRow(
+    stations: List<RadioStation>,
+    onStationClick: (RadioStation) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        items(stations, key = { "apple-radio:onair:${it.id}" }) { station ->
+            Column(
+                modifier = Modifier
+                    .width(300.dp)
+                    .clickable { onStationClick(station) },
+            ) {
+                AsyncImage(
+                    model = station.artworkUrl?.artworkAt(CARD_ART_PX),
+                    contentDescription = station.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = station.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = station.provider ?: stringResource(Res.string.live),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

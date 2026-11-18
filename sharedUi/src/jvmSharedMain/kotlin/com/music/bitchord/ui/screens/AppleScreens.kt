@@ -120,19 +120,16 @@ fun AppleHomeScreen(
                 }
                 is UiState.Success -> {
                     val shelves = page.data
-                    // The head card: Apple's "Coming Soon" when the catalogue
-                    // published one, and the first shelf's own card otherwise,
-                    // so the page always leads with a large cover rather than
-                    // with an empty gap.
-                    val hero = shelves.firstOrNull { it.title.contains("coming soon", ignoreCase = true) }
-                        ?: shelves.firstOrNull()
-                    if (hero != null) {
+                    // The head of the page: a run of large portrait cards,
+                    // the way Apple's own page opens. One card per group, and
+                    // the first card is the one the page leads with.
+                    val heads = shelves.take(6)
+                    if (heads.isNotEmpty()) {
                         item(key = "apple:hero") {
-                            AppleHeroCard(
-                                shelf = hero,
-                                onClick = { item ->
-                                    onItemClick(item, hero.title)
-                                },
+                            AppleHeroCarousel(
+                                shelves = heads,
+                                onItemClick = onItemClick,
+                                onItemLongPress = onItemLongPress,
                             )
                         }
                     }
@@ -256,7 +253,9 @@ private fun AppleShelfCarousel(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = shelf.title,
+            // Apple's headings carry a chevron, because a heading over a row
+            // is a way into more of it rather than a label.
+            text = shelf.title + "  \u203A",
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
@@ -322,45 +321,87 @@ private fun AppleShelfCarousel(
 }
 
 /**
+ * The run of large cards at the head of the page.
+ *
+ * Apple's own page opens with portrait cards: the cover, the title over it
+ * and the artist under it. They are a run rather than one card, because the
+ * page leads with several of the listener's own things.
+ */
+@Composable
+private fun AppleHeroCarousel(
+    shelves: List<HomeShelf>,
+    onItemClick: (ShelfItem, String) -> Unit,
+    onItemLongPress: ((ShelfItem) -> Unit)?,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        itemsIndexed(
+            shelves,
+            key = { index, shelf -> "apple:hero:$index:${shelf.title}" },
+        ) { _, shelf ->
+            val item = shelf.items.firstOrNull() ?: return@itemsIndexed
+            Column(
+                modifier = Modifier.width(240.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(3f / 4f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .longPressMenuClickable(
+                            onClick = { onItemClick(item, shelf.title) },
+                            onLongClick = onItemLongPress?.let { { it(item) } },
+                        ),
+                ) {
+                    AsyncImage(
+                        model = item.thumbnailUrl?.artworkAt(HEADER_ART_PX),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(14.dp),
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (item.subtitle.isNotBlank()) {
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
  * The large card at the head of the page.
  *
  * A cover with the title laid over it, the way Apple's own head card is
  * drawn — the artwork is the card, not a picture inside a card.
  */
-@Composable
-private fun AppleHeroCard(
-    shelf: HomeShelf,
-    onClick: (ShelfItem) -> Unit,
-) {
-    val item = shelf.items.firstOrNull() ?: return
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = PAGE_GUTTER)
-            .aspectRatio(16f / 9f)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable { onClick(item) },
-    ) {
-        AsyncImage(
-            model = item.thumbnailUrl?.artworkAt(HEADER_ART_PX),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
-        Text(
-            text = item.title,
-            style = MaterialTheme.typography.titleLarge,
-            color = Color.White,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp),
-        )
-    }
-}
-
 /**
  * The two-column grid of cards.
  *

@@ -310,5 +310,6 @@
     <string name="apple_songs">Songs</string>
     <string name="apple_playlists">Playlists</string>
     <string name="apple_stations_by_genre">Stations by Genre</string>
+    <string name="apple_on_air_now">On Air Now</string>
     <string name="apple_international_broadcasters">International Broadcasters</string>
 </resources>
