@@ -6,6 +6,11 @@ name: Appix APK
 # here only when it is actually going to be installed.
 on:
   workflow_dispatch:
+    inputs:
+      fast:
+        description: "Skip R8 for a faster test build"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -61,11 +66,16 @@ jobs:
         # variant) and it runs after the code compiled. The signed APK does
         # not need it; the separate test workflow is the gate for that.
         run: |
+          extra_args=()
+          if [ "${{ inputs.fast }}" = "true" ]; then
+            extra_args+=("-Pappix.fastApk=true")
+          fi
           ./gradlew :app:assembleDevRelease \
             --build-cache --parallel --stacktrace --console=plain \
             -x :app:lintVitalDevRelease \
             -x :app:lintVitalAnalyzeDevRelease \
-            -x :app:lintVitalReportDevRelease
+            -x :app:lintVitalReportDevRelease \
+            "${extra_args[@]}"
 
       - name: Verify package, label and version
         env:

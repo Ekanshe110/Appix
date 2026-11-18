@@ -34,6 +34,16 @@ val lastfmSecret: String = (
         ?: ""
     ).trim()
 
+/**
+ * A build for checking behaviour, not for shipping.
+ *
+ * R8 is six of the twelve minutes the signed APK job spends. It does not
+ * change what the app does, so a test build can skip it and keep the release
+ * runtime (non-debuggable) that matters on a phone. The normal build keeps
+ * R8, and the separate test job still runs the full compile.
+ */
+val fastApk = providers.gradleProperty("appix.fastApk").orNull == "true"
+
 /*
  * Where Listen Together's party server lives. Not a credential — it is a public
  * URL, and every device in a party has to be pointed at the same one — but it is
@@ -176,10 +186,10 @@ android {
              * code, which is where the time goes. Checked on a device through the
              * `benchmark` build type below before it ships.
              */
-            isMinifyEnabled = true
+            isMinifyEnabled = !fastApk
             // Drop resources no code references (dead drawables, unused locale
             // variants of drawables, etc.) — pairs with R8 above.
-            isShrinkResources = true
+            isShrinkResources = !fastApk
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
