@@ -1359,6 +1359,42 @@ class PlaybackService : MediaLibraryService() {
         }
 
         /**
+         * The audio track's own account of itself: how much it was given,
+         * how much it played, and how often it ran dry.
+         *
+         * A live station that is silent is silent in one of two ways, and
+         * only these numbers say which: the track was fed and played (and
+         * the audio was never audible), or the track ran dry and never had
+         * anything to play.
+         */
+        override fun onAudioSinkUnderrun(
+            eventTime: AnalyticsListener.EventTime,
+            audioSink: AudioSink,
+            underrunCount: Int,
+            totalUnderrunDurationUs: Long,
+            lastPositionUs: Long,
+        ) {
+            TrackLog.w(
+                "AUDIO_OUT",
+                "underrun x$underrunCount (${totalUnderrunDurationUs}us) at ${lastPositionUs}us",
+                about = eventTime.mediaId(),
+            )
+        }
+
+        override fun onRenderedPositionDiscontinuity(
+            eventTime: AnalyticsListener.EventTime,
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int,
+        ) {
+            TrackLog.d(
+                "AUDIO_OUT",
+                "position ${oldPosition.positionMs}ms -> ${newPosition.positionMs}ms (reason $reason)",
+                about = eventTime.mediaId(),
+            )
+        }
+
+        /**
          * The true-bitrate feed: every completed media load adds its bytes
          * — and the stretch of the track's timeline those bytes decode to —
          * to [measuredBitrate], attributed to the track whose window the

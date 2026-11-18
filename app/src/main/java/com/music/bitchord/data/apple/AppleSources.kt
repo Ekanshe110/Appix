@@ -460,9 +460,17 @@ private fun AppleLiveStream.song(
     radioName = station.name,
     playbackSource = station.name,
     playbackSourceType = PlaybackSourceType.RADIO,
-    liveStreamUrl = streamURL,
+    // The playlist comes from the addon, cleaned: the key the stream's own
+    // playlist names is not the key the audio is encrypted under, and the
+    // addon publishes the right one.
+    liveStreamUrl = playlistUrl(handle.baseUrl, station.id),
     liveLicenseUrl = licenseUrl(handle.baseUrl, station.id, key),
 )
+
+/** Where the device asks the addon for a live station's playlist. */
+internal fun playlistUrl(baseUrl: String, stationId: String): String =
+    baseUrl.trimEnd('/') + "/radio/playlist/" +
+        java.net.URLEncoder.encode(stationId, "UTF-8") + "/master"
 
 /** Where the device asks the addon for a live stream's license. */
 internal fun licenseUrl(
