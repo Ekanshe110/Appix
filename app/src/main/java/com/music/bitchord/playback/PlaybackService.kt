@@ -7187,7 +7187,12 @@ class PlaybackService : MediaLibraryService() {
         player.setMediaItems(
             items,
             last.index,
-            if (live) 0L else last.positionMs,
+            // C.TIME_UNSET, not 0: 0 is the oldest edge of the live window,
+            // not "live". Starting there makes the player chase a window that
+            // has already moved, which is heard as a stutter every segment.
+            // The default live position keeps the target offset behind the
+            // live edge and leaves room to buffer.
+            if (live) C.TIME_UNSET else last.positionMs,
         )
         return true
     }

@@ -92,8 +92,8 @@ android {
         // Haze falls back to a translucent scrim below that.
         minSdk = 26
         targetSdk = 36
-        versionCode = 163
-        versionName = "3.1.6"
+        versionCode = 164
+        versionName = "3.1.7"
 
         buildConfigField("boolean", "AUDIO_PROBE", audioProbe.toString())
 
