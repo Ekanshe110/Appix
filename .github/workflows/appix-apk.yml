@@ -11,6 +11,10 @@ on:
         description: "Skip R8 for a faster test build"
         type: boolean
         default: true
+      arm64_only:
+        description: "Build only the arm64-v8a split"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -69,6 +73,9 @@ jobs:
           extra_args=()
           if [ "${{ inputs.fast }}" = "true" ]; then
             extra_args+=("-Pappix.fastApk=true")
+          fi
+          if [ "${{ inputs.arm64_only }}" = "true" ]; then
+            extra_args+=("-Pappix.arm64Only=true")
           fi
           ./gradlew :app:assembleDevRelease \
             --build-cache --parallel --stacktrace --console=plain \

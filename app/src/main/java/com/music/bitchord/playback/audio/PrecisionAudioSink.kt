@@ -11,6 +11,7 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.ForwardingAudioSink
 import com.music.bitchord.BuildConfig
+import com.music.bitchord.data.TrackLog
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.playback.AudioOutputStatus
 import com.music.bitchord.playback.audio.usb.DirectAudioOutput
@@ -145,6 +146,10 @@ class PrecisionAudioSink(
 
     /** One adoption attempt per configured track; a failed claim is not retried per buffer. */
     private var lastExclusiveAttemptMs = 0L
+
+    /** Fast-build diagnostics: what reaches the sink, and at what gain. */
+    private var lastPcmProbeUs = Long.MIN_VALUE
+    private var lastSinkVolume = Float.NaN
 
     /**
      * Set when the exclusive open failed for a reason retrying cannot fix
@@ -615,6 +620,25 @@ class PrecisionAudioSink(
             presentationTimeUs,
             encodedAccessUnitCount,
         )
+        if (
+            BuildConfig.AUDIO_PROBE &&
+            inEncoding == PcmEncoding.PCM_16BIT &&
+            presentationTimeUs > 0 &&
+            presentationTimeUs - lastPcmProbeUs >= 2_000_000L
+        ) {
+            lastPcmProbeUs = presentationTimeUs
+            val probe = inputBuffer.duplicate()
+            var peak = 0
+            while (probe.remaining() >= 2) {
+                val sample = probe.short.toInt()
+                val magnitude = if (sample < 0) -sample else sample
+                if (magnitude > peak) peak = magnitude
+            }
+            TrackLog.d(
+                "AUDIO_OUT",
+                "PCM peak=$peak at ${presentationTimeUs / 1000}ms",
+            )
+        }
         val outEncoding = targetOutputEncoding ?: return delegate.handleBuffer(
             inputBuffer,
             presentationTimeUs,
@@ -980,6 +1004,10 @@ class PrecisionAudioSink(
     }
 
     override fun setVolume(volume: Float) {
+        if (BuildConfig.AUDIO_PROBE && volume != lastSinkVolume) {
+            lastSinkVolume = volume
+            TrackLog.d("AUDIO_OUT", "sink volume=$volume exclusive=$exclusiveActive")
+        }
         // This is the crossfade's gain, not the listener's level: the level
         // lives in [AppSettings.playerVolume] and is applied by the app when
         // the mixer is out of the path.

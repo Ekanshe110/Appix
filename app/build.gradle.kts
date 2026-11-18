@@ -43,6 +43,8 @@ val lastfmSecret: String = (
  * R8, and the separate test job still runs the full compile.
  */
 val fastApk = providers.gradleProperty("appix.fastApk").orNull == "true"
+val arm64Only = providers.gradleProperty("appix.arm64Only").orNull == "true"
+val audioProbe = fastApk
 
 /*
  * Where Listen Together's party server lives. Not a credential — it is a public
@@ -90,8 +92,10 @@ android {
         // Haze falls back to a translucent scrim below that.
         minSdk = 26
         targetSdk = 36
-        versionCode = 160
-        versionName = "3.1.3"
+        versionCode = 161
+        versionName = "3.1.4"
+
+        buildConfigField("boolean", "AUDIO_PROBE", audioProbe.toString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -115,8 +119,15 @@ android {
         abi {
             isEnable = true
             reset()
-            include("armeabi-v7a", "arm64-v8a", "x86_64")
-            isUniversalApk = true
+            if (arm64Only) {
+                // The test phone is arm64; the other ABIs are a third of the
+                // native compile and two more APKs to sign for no benefit.
+                include("arm64-v8a")
+                isUniversalApk = false
+            } else {
+                include("armeabi-v7a", "arm64-v8a", "x86_64")
+                isUniversalApk = true
+            }
         }
     }
 

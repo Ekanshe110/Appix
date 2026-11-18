@@ -1353,7 +1353,9 @@ class PlaybackService : MediaLibraryService() {
             )
             TrackLog.i(
                 "AUDIO_OUT",
-                "AudioTrack ${audioTrackConfig.sampleRate}Hz encoding=${audioTrackConfig.encoding}",
+                "AudioTrack ${audioTrackConfig.sampleRate}Hz encoding=${audioTrackConfig.encoding} " +
+                    "active=${player?.currentMediaItem?.mediaId ?: "-"} vol=${player?.volume} " +
+                    "standby=${spare?.currentMediaItem?.mediaId ?: "-"} svol=${spare?.volume}",
                 about = eventTime.mediaId(),
             )
         }
