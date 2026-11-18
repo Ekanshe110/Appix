@@ -470,7 +470,7 @@ private fun AppleLiveStream.song(
 /** Where the device asks the addon for a live station's playlist. */
 internal fun playlistUrl(baseUrl: String, stationId: String): String =
     baseUrl.trimEnd('/') + "/radio/playlist/" +
-        java.net.URLEncoder.encode(stationId, "UTF-8") + "/master"
+        java.net.URLEncoder.encode(stationId, "UTF-8") + "/master.m3u8"
 
 /** Where the device asks the addon for a live stream's license. */
 internal fun licenseUrl(
