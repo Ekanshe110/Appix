@@ -141,7 +141,10 @@ fun AppleHomeScreen(
                     // scrolled sideways, not a grid of everything at once.
                     items(
                         shelves.filter { it !== hero },
-                        key = { "apple:shelf:${it.title}" },
+                        // The row's place is part of the key: two groups can
+                        // carry the same title, and a lazy list given the
+                        // same key twice crashes rather than drawing it.
+                        key = { index, shelf -> "apple:shelf:$index:${shelf.title}" },
                     ) { shelf ->
                         AppleShelfCarousel(
                             shelf = shelf,
@@ -223,7 +226,7 @@ fun AppleBrowseScreen(
                     // over a horizontal row of square cards.
                     items(
                         page.data,
-                        key = { "apple-browse:shelf:${it.title}" },
+                        key = { index, shelf -> "apple-browse:shelf:$index:${shelf.title}" },
                     ) { shelf ->
                         AppleShelfCarousel(
                             shelf = shelf,
@@ -269,7 +272,10 @@ private fun AppleShelfCarousel(
             contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            items(shelf.items, key = { "apple:card:${it.videoId ?: it.title}" }) { item ->
+            items(
+                shelf.items,
+                key = { index, item -> "apple:card:$index:${item.videoId ?: item.title}" },
+            ) { item ->
                 Column(
                     modifier = Modifier.width(150.dp),
                 ) {

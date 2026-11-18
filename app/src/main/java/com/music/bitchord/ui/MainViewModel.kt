@@ -540,6 +540,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * catalogue rather than a page of the listener's history, which is what
      * makes it Apple's browse and not a second Home.
      */
+    /**
+     * Whether a row is one Apple's own catalogue holds.
+     *
+     * The rule the "only Apple Music" switch is made of: a row that came
+     * from Apple's catalogue is kept, and a row from anywhere else is not.
+     */
+    fun isAppleRow(song: Song): Boolean {
+        val parsed = com.music.bitchord.data.sources.SourceRegistry.parseTrackKey(song.videoId)
+        if (parsed == null) return false
+        return com.music.bitchord.data.apple.AppleManifestLocator.isAppleConfigCached(parsed.first) == true
+    }
+
+    /**
+     * Keeps only the rows Apple's catalogue holds, when the listener asked
+     * for that.
+     *
+     * The switch says what the app is allowed to play, so it is applied to
+     * the list before it is queued rather than to each row as it plays: a
+     * row that is not in Apple's catalogue is not offered at all.
+     */
+    fun keepOnlyAppleRows(songs: List<Song>): List<Song> {
+        if (!AppSettings.appleCatalogueOnly) return songs
+        val kept = songs.filter { isAppleRow(it) }
+        return kept.ifEmpty { songs }
+    }
+
     private val _appleBrowse = MutableStateFlow<UiState<List<HomeShelf>>>(UiState.Loading)
     val appleBrowse: StateFlow<UiState<List<HomeShelf>>> = _appleBrowse.asStateFlow()
 

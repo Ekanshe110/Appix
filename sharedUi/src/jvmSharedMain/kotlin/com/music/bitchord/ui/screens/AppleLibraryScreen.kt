@@ -118,7 +118,7 @@ fun AppleLibraryScreen(
                         // listener's own newest playlists.
                         items(
                             content.recentlyAdded.chunked(2),
-                            key = { "apple-library:recent:${it.first().videoId}" },
+                            key = { index, row -> "apple-library:recent:$index:${row.first().browseId}" },
                         ) { row ->
                             AppleTileRow(
                                 items = row,
@@ -143,7 +143,14 @@ fun AppleLibraryScreen(
                         item(key = "apple-library:songs-header") {
                             AppleSectionHeader(stringResource(Res.string.apple_songs))
                         }
-                        items(content.songs, key = { "apple-library:song:${it.videoId}" }) { song ->
+                        // The key carries the row's place as well as its id:
+                        // Apple's library can hold the same recording twice,
+                        // and a lazy list that is given the same key twice
+                        // crashes rather than drawing it.
+                        items(
+                            content.songs,
+                            key = { index, song -> "apple-library:song:$index:${song.videoId}" },
+                        ) { song ->
                             AppleLibrarySongRow(
                                 song = song,
                                 onClick = { onSongClick(song) },
@@ -154,7 +161,10 @@ fun AppleLibraryScreen(
                         item(key = "apple-library:playlists-header") {
                             AppleSectionHeader(stringResource(Res.string.apple_playlists))
                         }
-                        items(content.playlists, key = { "apple-library:playlist:${it.videoId}" }) { playlist ->
+                        items(
+                            content.playlists,
+                            key = { index, playlist -> "apple-library:playlist:$index:${playlist.browseId}" },
+                        ) { playlist ->
                             AppleLibraryRow(
                                 item = playlist,
                                 onClick = { onItemClick(playlist) },

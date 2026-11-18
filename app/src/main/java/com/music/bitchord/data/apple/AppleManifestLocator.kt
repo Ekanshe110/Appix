@@ -68,6 +68,20 @@ object AppleManifestLocator {
     suspend fun isInstalled(): Boolean = baseUrl() != null
 
     /**
+     * Whether a config is the installed Apple Music manifest's own, as far as
+     * the last answer goes.
+     *
+     * Null when the question has not been answered yet: an unknown answer is
+     * not a "no", and the rule that keeps the app to Apple's catalogue must
+     * not refuse a track because the app had not looked.
+     */
+    fun isAppleConfigCached(configId: String): Boolean? {
+        val base = cachedBaseUrl ?: return null
+        val config = SourceRegistry.configs.value.firstOrNull { it.baseUrl == base } ?: return null
+        return config.id == configId
+    }
+
+    /**
      * Whether an Apple Music manifest is installed, as far as the last answer
      * goes.
      *

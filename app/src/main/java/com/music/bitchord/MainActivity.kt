@@ -1595,7 +1595,34 @@ private fun BitChordApp(
         }
     }
 
-    val playFrom: (List<Song>, Int, QueueSource) -> Unit = playFrom@{ allSongs, allIndex, source ->
+    val playFrom: (List<Song>, Int, QueueSource) -> Unit = playFrom@{ requestedSongs, requestedIndex, source ->
+        // Copies, because the rule below may narrow the list and the index
+        // with it: the lambda's own parameters are values.
+        var allSongs = requestedSongs
+        var allIndex = requestedIndex
+        // The "only Apple Music" rule: a track that is not in Apple's own
+        // catalogue is not played when the listener has asked for the app to
+        // be kept to Apple's catalogue. The rows are dropped before the
+        // queue is built, so the queue never holds one.
+        if (AppSettings.appleCatalogueOnly) {
+            val kept = viewModel.keepOnlyAppleRows(allSongs)
+            if (kept.size != allSongs.size) {
+                if (kept.isEmpty()) {
+                    showQueueNotice(context.getString(R.string.apple_only_catalogue_nothing))
+                    return@playFrom
+                }
+                showQueueNotice(
+                    context.resources.getQuantityString(
+                        R.plurals.apple_only_catalogue_dropped,
+                        allSongs.size - kept.size,
+                        allSongs.size - kept.size,
+                    ),
+                )
+                val keepIndex = kept.indexOf(allSongs.getOrNull(allIndex)).coerceAtLeast(0)
+                allSongs = kept
+                allIndex = keepIndex
+            }
+        }
         // A Spotify page lists songs it has not found on YouTube Music yet (or
         // never will); those can't be queued, so play the rest in their order.
         if (allSongs.getOrNull(allIndex)?.isUnresolvedSpotify == true) return@playFrom

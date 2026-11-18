@@ -66,6 +66,7 @@ internal fun ProviderSettings(
     sheets: SettingsSheets,
 ) {
     val axes by AppSettings.providerAxes.collectAsStateWithLifecycle()
+    val appleOnlyCatalogue by AppSettings.appleOnlyCatalogue.collectAsStateWithLifecycle()
 
     // Whether an Apple Music manifest is installed. Asked once per visit to
     // the page: the answer decides whether the Apple rows can promise
@@ -108,6 +109,34 @@ internal fun ProviderSettings(
                     )
                 },
             )
+        }
+
+        // Only Apple's own catalogue, when the app is Apple's.
+        //
+        // The switch is under the master toggle because it is a rule about
+        // the whole app, not about one axis: a track that is not in Apple's
+        // catalogue is not played and not offered, whatever else could have
+        // played it.
+        if (axes.allApple) {
+            val onlyTitle = stringResource(R.string.provider_apple_only_catalogue)
+            row(onlyTitle, "apple", "catalogue", "only", "apple music", "exclusive") {
+                SettingsRow(
+                    icon = Icons.Rounded.LibraryMusic,
+                    title = onlyTitle,
+                    subtitle = stringResource(R.string.provider_apple_only_catalogue_subtitle),
+                    trailing = {
+                        SettingsSwitch(
+                            checked = appleOnlyCatalogue,
+                            onCheckedChange = { wanted ->
+                                AppSettings.setAppleOnlyCatalogue(wanted)
+                            },
+                        )
+                    },
+                    onClick = {
+                        AppSettings.setAppleOnlyCatalogue(!appleOnlyCatalogue)
+                    },
+                )
+            }
         }
 
         val uiTitle = stringResource(R.string.provider_axis_ui)

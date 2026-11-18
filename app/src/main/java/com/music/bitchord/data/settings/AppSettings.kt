@@ -534,6 +534,19 @@ object AppSettings {
         else -> null
     }
 
+    /**
+     * Keeps the app to Apple's own catalogue, or lets it be as wide as it was.
+     *
+     * Written straight to disk: the switch changes what may be played, and a
+     * value that had not reached the disk when the process died would be a
+     * rule that came back off.
+     */
+    fun setAppleOnlyCatalogue(only: Boolean) {
+        if (appleOnlyCatalogue.value == only) return
+        appleOnlyCatalogue.value = only
+        prefs.edit().putBoolean(KEY_APPLE_ONLY_CATALOGUE, only).commit()
+    }
+
     private fun persistProviderAxes(axes: ProviderAxes) {
         prefs.edit()
             .putString(KEY_PROVIDER_UI, axes.ui.id)
@@ -957,6 +970,28 @@ object AppSettings {
      * one switch away from being on.
      */
     val podcastsEnabled = MutableStateFlow(false)
+
+    /**
+     * Only what is in Apple's own catalogue is kept.
+     *
+     * Apple's Music app is a catalogue app: what it plays is what Apple
+     * holds. This is that rule, as a switch, for a listener who wants the
+     * app to be Apple's rather than Apple's look over somebody else's rows:
+     * a track that is not in Apple's catalogue is not played and not offered,
+     * whatever else could have played it.
+     *
+     * Off by default. It is a choice about what the app is allowed to do, not
+     * about how it looks, so it is not implied by the Apple look.
+     */
+    val appleOnlyCatalogue = MutableStateFlow(false)
+
+    /**
+     * Whether the Apple look is on *and* the app is kept to Apple's
+     * catalogue. The switch is only offered under the Apple master toggle,
+     * so this is what the app reads.
+     */
+    val appleCatalogueOnly: Boolean
+        get() = appleOnlyCatalogue.value && appleMasterOn
 
     /**
      * How strong the [liquidGlass] material is,
@@ -1912,6 +1947,7 @@ object AppSettings {
         liquidGlass.value = prefs.getBoolean(KEY_LIQUID_GLASS, false)
         foldingNavBar.value = prefs.getBoolean(KEY_FOLDING_NAV_BAR, true)
         podcastsEnabled.value = prefs.getBoolean(KEY_PODCASTS_ENABLED, false)
+        appleOnlyCatalogue.value = prefs.getBoolean(KEY_APPLE_ONLY_CATALOGUE, false)
         liquidGlassIntensity.value = prefs.getFloat(KEY_LIQUID_GLASS_INTENSITY, 1f)
             .coerceIn(MIN_LIQUID_GLASS_INTENSITY, MAX_LIQUID_GLASS_INTENSITY)
         glassPerformance.value = prefs.getBoolean(KEY_GLASS_PERFORMANCE, false)
@@ -3559,6 +3595,8 @@ object AppSettings {
     private const val KEY_LIQUID_GLASS = "liquid_glass"
     private const val KEY_GLASS_PERFORMANCE = "glass_performance"
     private const val KEY_FOLDING_NAV_BAR = "folding_nav_bar"
+    private const val KEY_APPLE_ONLY_CATALOGUE = "apple_only_catalogue"
+
     private const val KEY_PODCASTS_ENABLED = "podcasts_enabled"
     private const val KEY_LIQUID_GLASS_INTENSITY = "liquid_glass_intensity"
     private const val KEY_LYRICS_BLUR = "lyrics_blur"
