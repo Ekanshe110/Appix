@@ -81,7 +81,6 @@ import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.IosShare
-import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Sort
@@ -1397,7 +1396,7 @@ private fun BitChordApp(
             if (appleLook) {
                 // Apple's browse page, in the slot Apple's own app keeps for
                 // it.
-                add(TAB_APPLE_NEW to BottomTab(newLabel, Icons.Rounded.NewReleases))
+                add(TAB_APPLE_NEW to BottomTab(newLabel, Icons.Rounded.AutoAwesome))
             } else {
                 // Quick Picks is not a tab: it is a section of Home, with the
                 // arrow at the end of its heading opening the whole set. The
