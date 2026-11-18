@@ -5875,13 +5875,20 @@ private fun RootPage(
             contentPadding = listPadding,
         )
         TAB_APPLE_NEW -> AppleBrowseScreen(
-            // Apple's browse page: Apple's own groups, drawn the way Apple's
-            // own browse page draws them. The look axis decides that this
-            // page exists; the content is Apple's either way.
+            // Apple's browse page: Apple's catalogue — its own playlists, its
+            // albums, its charts, its sessions and its mixes — and the
+            // directory of what else there is to browse.
             state = appleBrowseState,
             listState = scroll.appleNew,
             onItemClick = onHomeItemClick,
             onItemLongPress = pageActions.onShelfLongPress,
+            // The directory: a way into the rest of Apple's catalogue, each
+            // row a search of Apple's own.
+            directory = appleBrowseDirectory,
+            onBrowse = { term ->
+                viewModel.searchFor(term)
+                nav.selectedTab = TAB_SEARCH
+            },
             onRetry = viewModel::loadAppleBrowse,
             refreshing = false,
             onRefresh = { viewModel.loadAppleBrowse() },
