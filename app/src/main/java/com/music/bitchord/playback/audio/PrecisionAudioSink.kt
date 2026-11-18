@@ -150,6 +150,7 @@ class PrecisionAudioSink(
     /** Fast-build diagnostics: what reaches the sink, and at what gain. */
     private var lastPcmProbeUs = Long.MIN_VALUE
     private var lastSinkVolume = Float.NaN
+    private var lastEntryLogMs = 0L
 
     /**
      * Set when the exclusive open failed for a reason retrying cannot fix
@@ -224,6 +225,11 @@ class PrecisionAudioSink(
         // would be fed the wrong clock, so let it go before anything else.
         if (exclusiveActive) leaveExclusiveUsb(resume = false)
         val format = audioSinkConfig.format
+        TrackLog.i(
+            "AUDIO_OUT",
+            "sink configure probe=${BuildConfig.AUDIO_PROBE} mime=${format.sampleMimeType} " +
+                "pcm=${format.pcmEncoding} sr=${format.sampleRate} ch=${format.channelCount}",
+        )
         // The endpoint is shared by the A/B crossfade sinks. Only the audible
         // one may keep or close it; the standby configuring early is what
         // used to retune the DAC under the track that was still playing.
@@ -582,6 +588,17 @@ class PrecisionAudioSink(
         presentationTimeUs: Long,
         encodedAccessUnitCount: Int,
     ): Boolean {
+        if (BuildConfig.AUDIO_PROBE) {
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastEntryLogMs >= 2_000L) {
+                lastEntryLogMs = now
+                TrackLog.d(
+                    "AUDIO_OUT",
+                    "sink buffer bytes=${inputBuffer.remaining()} precision=$isPrecisionActive " +
+                        "enc=$inputPcmEncoding pts=$presentationTimeUs",
+                )
+            }
+        }
         if (exclusiveActive) {
             when (tryExclusiveBuffer(inputBuffer, presentationTimeUs)) {
                 ExclusiveOutcome.CONSUMED -> return true
