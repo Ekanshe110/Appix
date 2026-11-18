@@ -173,6 +173,13 @@
     <string name="stop">Stop</string>
     <string name="provider_apple_only_catalogue">Only Apple Music tracks</string>
     <string name="atmos_not_supported">This device cannot play Dolby Atmos</string>
+    <string name="system_log_title">System log</string>
+    <string name="system_log_subtitle">A detailed report of what the app did, what it cost and what the system said — send it when something is wrong</string>
+    <string name="system_log_copy">Copy</string>
+    <string name="system_log_share">Share</string>
+    <string name="system_log_with_system">Without the system log</string>
+    <string name="system_log_without_system">With the system log</string>
+    <string name="system_log_working">Gathering the report…</string>
     <string name="apple_only_catalogue_nothing">None of these are in Apple Music</string>
     <plurals name="apple_only_catalogue_dropped">
         <item quantity="one">%d track is not in Apple Music and was left out</item>
