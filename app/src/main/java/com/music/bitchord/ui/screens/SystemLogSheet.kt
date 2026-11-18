@@ -68,6 +68,7 @@ internal fun SystemLogSheet(onDismiss: () -> Unit) {
     val withoutSystemLabel = stringResource(R.string.system_log_without_system)
     val withSystemLabel = stringResource(R.string.system_log_with_system)
     val shareChooser = stringResource(R.string.system_log_share)
+    val reportSubject = stringResource(R.string.system_log_title)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -105,7 +106,7 @@ internal fun SystemLogSheet(onDismiss: () -> Unit) {
                 TextButton(onClick = {
                     val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                         type = "text/plain"
-                        putExtra(android.content.Intent.EXTRA_SUBJECT, stringResource(R.string.system_log_title))
+                        putExtra(android.content.Intent.EXTRA_SUBJECT, reportSubject)
                         putExtra(android.content.Intent.EXTRA_TEXT, text)
                     }
                     runCatching {
