@@ -5012,6 +5012,19 @@ private fun RootPage(
     // Apple's own sections of the Radio page: the stations by genre, the
     // sessions, the mixes, the interviews and the shows.
     val appleRadioShelves = viewModel.appleRadioShelvesList
+    // The directory at the foot of Apple's browse page: the rest of the
+    // catalogue, each row a search of Apple's own.
+    val appleBrowseDirectory = remember {
+        listOf(
+            "Charts" to "Top 100",
+            "Playlists" to "Apple Music",
+            "Albums" to "New Releases",
+            "Artists" to "Radio",
+            "Stations by Genre" to "Station",
+            "Apple Music Sessions" to "Sessions",
+            "The Best DJ Mixes" to "DJ Mix",
+        )
+    }
     // Apple's browse groups, for the New page under Apple's look.
     val appleBrowseState by viewModel.appleBrowse.collectAsStateWithLifecycle()
     // Apple's own library, for the Library page under Apple's look.

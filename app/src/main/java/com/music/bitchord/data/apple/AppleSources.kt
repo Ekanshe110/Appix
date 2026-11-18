@@ -231,7 +231,7 @@ internal object AppleSources {
         }
         // The catalogue's own rows, found the way Apple's own browse finds
         // them: by what they are called.
-        for (title, term in _BROWSE_SHELVES) {
+        for ((title, term) in _BROWSE_SHELVES) {
             val rows = AppleCatalogue.browse(handle.baseUrl, term, "playlists", 12).getOrNull()
                 ?.playlists.orEmpty()
             if (rows.isEmpty()) continue
