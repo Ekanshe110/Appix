@@ -492,6 +492,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * Apple's own page keeps them in a row of their own, under the name of
      * whoever runs them.
      */
+    /**
+     * Apple's own Radio page, as its sections of stations and playlists.
+     */
+    private val _appleRadioShelves =
+        MutableStateFlow<UiState<List<com.music.bitchord.data.model.AppleRadioShelf>>>(UiState.Loading)
+    val appleRadioShelves: StateFlow<UiState<List<com.music.bitchord.data.model.AppleRadioShelf>>> =
+        _appleRadioShelves.asStateFlow()
+
+    /** The sections of Apple's Radio page, or none when they are not in yet. */
+    val appleRadioShelvesList: List<com.music.bitchord.data.model.AppleRadioShelf>
+        get() = (_appleRadioShelves.value as? UiState.Success)?.data.orEmpty()
+
     private val _appleInternationalRadio = MutableStateFlow<UiState<List<RadioStation>>>(UiState.Loading)
     val appleInternationalRadio: StateFlow<UiState<List<RadioStation>>> =
         _appleInternationalRadio.asStateFlow()
@@ -529,6 +541,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 .onFailure {
                     _appleInternationalRadio.value = UiState.Success(emptyList())
+                }
+            // Apple's own sections of the page: the stations by genre, the
+            // sessions, the mixes, the interviews and the shows.
+            com.music.bitchord.data.apple.AppleSources.radioShelves(handle)
+                .onSuccess { shelves ->
+                    _appleRadioShelves.value = UiState.Success(shelves)
+                }
+                .onFailure {
+                    _appleRadioShelves.value = UiState.Success(emptyList())
                 }
         }
     }

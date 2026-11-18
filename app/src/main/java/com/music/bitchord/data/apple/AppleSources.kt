@@ -169,6 +169,22 @@ internal object AppleSources {
         AppleCatalogue.stationTracks(handle.baseUrl, stationId)
 
     /**
+     * Apple's Radio page, as the sections of rows it draws.
+     *
+     * A station plays from here; a playlist opens as a page of its own, the
+     * way it does in Apple's own app.
+     */
+    suspend fun radioShelves(handle: Handle): Result<List<com.music.bitchord.data.model.AppleRadioShelf>> =
+        AppleCatalogue.radioSections(handle.baseUrl).map { shelves ->
+            shelves.map { shelf ->
+                com.music.bitchord.data.model.AppleRadioShelf(
+                    title = shelf.title,
+                    items = shelf.items.map { row -> row.station() },
+                )
+            }
+        }
+
+    /**
      * The stations other broadcasters run, as the rows the Radio page draws.
      *
      * They are Apple's own page's "International Broadcasters" row: live
@@ -328,6 +344,20 @@ internal fun AppleStation.station(): RadioStation = RadioStation(
     deepLink = url?.takeIf { it.startsWith("http://") || it.startsWith("https://") },
     provider = provider,
 )
+
+/** One row of Apple's Radio page, as the page draws it. */
+internal fun AppleRadioRow.station(): com.music.bitchord.data.model.AppleRadioRow =
+    com.music.bitchord.data.model.AppleRadioRow(
+        id = id,
+        name = name,
+        kind = kind,
+        isLive = isLive,
+        subtitle = subtitle,
+        artworkUrl = artworkURL,
+        provider = provider,
+        // A playlist opens as a page of its own; a station plays from here.
+        browseId = if (kind == "playlists") PAGE_PREFIX + id else null,
+    )
 
 /**
  * A live station, as a row this app can play.

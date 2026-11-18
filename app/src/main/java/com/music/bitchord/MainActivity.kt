@@ -5009,6 +5009,9 @@ private fun RootPage(
     val appleRadioState by viewModel.appleRadio.collectAsStateWithLifecycle()
     // The stations other broadcasters run, for the Radio page under Apple's look.
     val appleInternationalRadioState by viewModel.appleInternationalRadio.collectAsStateWithLifecycle()
+    // Apple's own sections of the Radio page: the stations by genre, the
+    // sessions, the mixes, the interviews and the shows.
+    val appleRadioShelves = viewModel.appleRadioShelvesList
     // Apple's browse groups, for the New page under Apple's look.
     val appleBrowseState by viewModel.appleBrowse.collectAsStateWithLifecycle()
     // Apple's own library, for the Library page under Apple's look.
@@ -5893,8 +5896,32 @@ private fun RootPage(
             AppleRadioScreen(
                 state = appleRadioState,
                 international = appleInternationalRadioState,
+                shelves = appleRadioShelves,
                 listState = scroll.radio,
+                onRowClick = { row ->
+                    // A playlist of Apple's own opens as a page of its own,
+                    // the way it does in Apple's app.
+                    val browseId = row.browseId
+                    if (browseId != null) {
+                        viewModel.openDetail(
+                            browseId = browseId,
+                            title = row.name,
+                            subtitle = row.subtitle,
+                            thumbnailUrl = row.artworkUrl,
+                        )
+                    }
+                },
                 onStationClick = { station ->
+                    val browseId = station.browseId
+                    if (browseId != null) {
+                        viewModel.openDetail(
+                            browseId = browseId,
+                            title = station.name,
+                            subtitle = station.subtitle,
+                            thumbnailUrl = station.artworkUrl,
+                        )
+                        return@onStationClick
+                    }
                     if (station.isLive) {
                         // A live station plays here. Its audio is
                         // Widevine-protected, so the addon publishes the

@@ -441,6 +441,34 @@ data class ShelfItem(
 )
 
 /**
+ * One row of Apple's Radio page.
+ *
+ * A station or a playlist: Apple's page carries both, and the row says which
+ * it is.
+ */
+data class AppleRadioRow(
+    val id: String,
+    val name: String,
+    /** "stations" or "playlists": what the row opens. */
+    val kind: String = "stations",
+    val isLive: Boolean = false,
+    val subtitle: String? = null,
+    val artworkUrl: String? = null,
+    val provider: String? = null,
+    /** The page the row opens, when it is a page rather than a station. */
+    val browseId: String? = null,
+)
+
+/**
+ * One section of Apple's Radio page: the stations by genre, the sessions,
+ * the mixes, the interviews, the shows.
+ */
+data class AppleRadioShelf(
+    val title: String,
+    val items: List<AppleRadioRow> = emptyList(),
+)
+
+/**
  * Apple's library, as the page draws it.
  *
  * Apple's Library page is not one list: it leads with what was added
@@ -785,6 +813,14 @@ data class RadioStation(
      * else runs them. It is what Apple's own page puts under the name.
      */
     val provider: String? = null,
+    /**
+     * The page this row opens, when it is a page rather than a station.
+     *
+     * Apple's Radio page carries playlists beside its stations — the
+     * sessions, the mixes, the interviews — and those open as pages of their
+     * own, the way they do in Apple's own app.
+     */
+    val browseId: String? = null,
 )
 
 /**

@@ -33,6 +33,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.music.bitchord.data.model.AppleRadioRow
+import com.music.bitchord.data.model.AppleRadioShelf
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.RadioStation
 import com.music.bitchord.data.model.ROW_ART_PX
@@ -65,8 +67,10 @@ import com.music.bitchord.sharedui.resources.*
 fun AppleRadioScreen(
     state: UiState<List<RadioStation>>,
     international: UiState<List<RadioStation>>,
+    shelves: List<AppleRadioShelf> = emptyList(),
     listState: LazyListState,
     onStationClick: (RadioStation) -> Unit,
+    onRowClick: (AppleRadioRow) -> Unit = { },
     onRetry: () -> Unit,
     refreshing: Boolean,
     onRefresh: () -> Unit,
@@ -146,6 +150,19 @@ fun AppleRadioScreen(
                             AppleStationCarousel(
                                 stations = live,
                                 onStationClick = onStationClick,
+                            )
+                        }
+                    }
+                    // Apple's own sections: the stations by genre, the
+                    // sessions, the mixes, the interviews and the shows.
+                    shelves.forEach { shelf ->
+                        item(key = "apple-radio:shelf:${shelf.title}") {
+                            AppleRadioHeader(shelf.title)
+                        }
+                        item(key = "apple-radio:shelf:${shelf.title}:row") {
+                            AppleRadioCarousel(
+                                rows = shelf.items,
+                                onRowClick = onRowClick,
                             )
                         }
                     }
@@ -287,20 +304,45 @@ private fun AppleStationCarousel(
     stations: List<RadioStation>,
     onStationClick: (RadioStation) -> Unit,
 ) {
+    AppleRadioCarousel(
+        rows = stations.map { station ->
+            AppleRadioRow(
+                id = station.id,
+                name = station.name,
+                isLive = station.isLive,
+                subtitle = station.subtitle,
+                artworkUrl = station.artworkUrl,
+                provider = station.provider,
+                browseId = station.browseId,
+            )
+        },
+        onRowClick = { row -> onStationClick(station) },
+    )
+}
+
+/**
+ * A horizontal run of the page's own rows: the artwork, the name, and who
+ * it is from.
+ */
+@Composable
+private fun AppleRadioCarousel(
+    rows: List<AppleRadioRow>,
+    onRowClick: (AppleRadioRow) -> Unit,
+) {
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        items(stations, key = { "apple-radio:carousel:${it.id}" }) { station ->
+        items(rows, key = { "apple-radio:carousel:${it.id}" }) { row ->
             Column(
                 modifier = Modifier
                     .width(150.dp)
-                    .clickable { onStationClick(station) },
+                    .clickable { onRowClick(row) },
             ) {
                 AsyncImage(
-                    model = station.artworkUrl?.artworkAt(CARD_ART_PX),
-                    contentDescription = station.name,
+                    model = row.artworkUrl?.artworkAt(CARD_ART_PX),
+                    contentDescription = row.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -310,16 +352,16 @@ private fun AppleStationCarousel(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = station.name,
+                    text = row.name,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val provider = station.provider
-                if (!provider.isNullOrBlank()) {
+                val under = row.provider ?: row.subtitle
+                if (!under.isNullOrBlank()) {
                     Text(
-                        text = provider,
+                        text = under,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

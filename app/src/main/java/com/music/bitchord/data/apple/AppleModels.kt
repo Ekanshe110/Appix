@@ -170,6 +170,36 @@ data class AppleLiveStream(
     @SerialName("keySystem") val keySystem: String? = null,
 )
 
+/**
+ * One row of Apple's Radio page.
+ *
+ * A station or a playlist: Apple's page carries both, and the row says
+ * which it is.
+ */
+@Serializable
+data class AppleRadioRow(
+    @SerialName("id") val id: String = "",
+    @SerialName("name") val name: String = "",
+    @SerialName("kind") val kind: String = "stations",
+    @SerialName("isLive") val isLive: Boolean = false,
+    @SerialName("subtitle") val subtitle: String? = null,
+    @SerialName("artworkURL") val artworkURL: String? = null,
+    @SerialName("provider") val provider: String? = null,
+)
+
+/** One section of Apple's Radio page. */
+@Serializable
+data class AppleRadioShelf(
+    @SerialName("title") val title: String = "",
+    @SerialName("items") val items: List<AppleRadioRow> = emptyList(),
+)
+
+/** The addon's answer for Apple's Radio page. */
+@Serializable
+data class AppleRadioShelves(
+    @SerialName("shelves") val shelves: List<AppleRadioShelf> = emptyList(),
+)
+
 /** The addon's answer for one live station's stream. */
 @Serializable
 data class AppleLiveStreamResponse(

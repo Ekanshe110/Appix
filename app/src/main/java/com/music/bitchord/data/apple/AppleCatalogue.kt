@@ -219,6 +219,13 @@ object AppleCatalogue {
         ).map { it.stations }
 
     /**
+     * Apple's own Radio page, as its sections of stations and playlists.
+     */
+    suspend fun radioSections(baseUrl: String): Result<List<AppleRadioShelf>> =
+        get(baseUrl, listOf("radio", "sections"), emptyMap(), AppleRadioShelves.serializer())
+            .map { it.shelves }
+
+    /**
      * Creates a playlist of the listener's own.
      *
      * Apple's own playlists are the ones Apple's own app creates, and they
