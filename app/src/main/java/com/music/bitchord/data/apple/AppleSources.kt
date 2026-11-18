@@ -338,9 +338,22 @@ internal fun AppleStation.station(): RadioStation = RadioStation(
  * license endpoint is the addon's, because the license can only be bought
  * with the listener's own Apple account — which never leaves the server.
  */
-internal fun AppleLiveStream.song(
+internal suspend fun AppleLiveStream.song(
     handle: AppleSources.Handle,
     station: RadioStation,
+): Song {
+    // The key the station's own playlist publishes, read by the device: the
+    // stream rotates its key as it goes, so the key the server would read
+    // itself may not be the one this device is playing. The license request
+    // therefore carries the key with it.
+    val key = mediaURL?.let { AppleLiveKeys.read(it) }
+    return song(handle, station, key)
+}
+
+private fun AppleLiveStream.song(
+    handle: AppleSources.Handle,
+    station: RadioStation,
+    key: AppleLiveKey?,
 ): Song = Song(
     videoId = SourceRegistry.trackKey(handle.configId, station.id),
     title = station.name,
@@ -351,10 +364,27 @@ internal fun AppleLiveStream.song(
     playbackSource = station.name,
     playbackSourceType = PlaybackSourceType.RADIO,
     liveStreamUrl = streamURL,
-    liveLicenseUrl = licenseUrl(handle.baseUrl, station.id),
+    liveLicenseUrl = licenseUrl(handle.baseUrl, station.id, key),
 )
 
 /** Where the device asks the addon for a live stream's license. */
-internal fun licenseUrl(baseUrl: String, stationId: String): String =
-    baseUrl.trimEnd('/') + "/radio/license?station=" +
-        java.net.URLEncoder.encode(stationId, "UTF-8")
+internal fun licenseUrl(
+    baseUrl: String,
+    stationId: String,
+    key: AppleLiveKey? = null,
+): String {
+    val url = StringBuilder(baseUrl.trimEnd('/'))
+    url.append("/radio/license?station=")
+    url.append(java.net.URLEncoder.encode(stationId, "UTF-8"))
+    if (key != null) {
+        // The key the device is playing, named the way the playlist names it,
+        // so the server asks Apple about this key and not about another one.
+        url.append("&pssh=")
+        url.append(java.net.URLEncoder.encode(key.widevineUri, "UTF-8"))
+        if (!key.skd.isNullOrBlank()) {
+            url.append("&skd=")
+            url.append(java.net.URLEncoder.encode(key.skd, "UTF-8"))
+        }
+    }
+    return url.toString()
+}
