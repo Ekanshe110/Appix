@@ -61,6 +61,7 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.MediaCodecAudioRenderer
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider
+import androidx.media3.exoplayer.drm.KeyRequestInfo
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.mediacodec.MediaCodecUtil
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -704,6 +705,17 @@ class PlaybackService : MediaLibraryService() {
      */
     private var activeTrackIsDolbyAtmos = false
 
+    /**
+     * Whether the current item is a DRM-protected live station.
+     *
+     * Read by the audio thread when it measures the decoder's own PCM, so it
+     * is volatile and never asks ExoPlayer for the current item from that
+     * thread — ExoPlayer is app-thread only. The transition callback is where
+     * the answer is known, and it flips this before the station's first
+     * decoder buffer arrives.
+     */
+    @Volatile private var radioDrmActive = false
+
     private var activeFilter: TransitionFilterProcessor = transitionFilterA
     private var spareFilter: TransitionFilterProcessor = transitionFilterB
 
@@ -1056,6 +1068,11 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            // Whether the item now playing is a DRM-protected live station.
+            // The audio thread cannot ask ExoPlayer for this — ExoPlayer is
+            // app-thread only — and the PCM meter has to know before the
+            // station's first decoder buffer arrives.
+            radioDrmActive = mediaItem?.localConfiguration?.drmConfiguration?.uuid == WIDEVINE_UUID
             // Everything below is the app's own work, and it all runs inside
             // Media3's event dispatch — see [guardPlaybackStep] for why a
             // throw in here used to cost the listener the whole app at the
@@ -1319,6 +1336,58 @@ class PlaybackService : MediaLibraryService() {
                     about = eventTime.mediaId(),
                 )
             }
+        }
+
+        /**
+         * The DRM session's own story, in the app's log rather than only in
+         * logcat.
+         *
+         * A live station that decrypts to silence and one whose license never
+         * arrived look identical from the outside: the playhead moves and no
+         * sound comes. These four lines tell them apart — the session state,
+         * the key request that carried the init data, the failure, and the
+         * release — so the next radio test does not have to guess which side
+         * of the CDM failed.
+         */
+        override fun onDrmSessionAcquired(
+            eventTime: AnalyticsListener.EventTime,
+            state: Int,
+        ) {
+            TrackLog.i(
+                "DRM",
+                "session acquired state=$state",
+                about = eventTime.mediaId(),
+            )
+        }
+
+        override fun onDrmKeysLoaded(
+            eventTime: AnalyticsListener.EventTime,
+            keyRequestInfo: KeyRequestInfo,
+        ) {
+            TrackLog.i(
+                "DRM",
+                "keys loaded request=${keyRequestInfo.requestId} uri=${keyRequestInfo.uri}",
+                about = eventTime.mediaId(),
+            )
+        }
+
+        override fun onDrmSessionManagerError(
+            eventTime: AnalyticsListener.EventTime,
+            error: Exception,
+        ) {
+            TrackLog.w(
+                "DRM",
+                "session manager error: ${error::class.java.simpleName}: ${error.message}",
+                about = eventTime.mediaId(),
+            )
+        }
+
+        override fun onDrmSessionReleased(eventTime: AnalyticsListener.EventTime) {
+            TrackLog.d(
+                "DRM",
+                "session released",
+                about = eventTime.mediaId(),
+            )
         }
 
         override fun onAudioDecoderInitialized(
@@ -5153,7 +5222,7 @@ class PlaybackService : MediaLibraryService() {
         // A live station is left as it is: there is no better copy of a
         // broadcast, and looking for one replaces the broadcast with
         // something that is not it.
-        if (LiveRadio.isLiveStream(uri)) return
+        if (LiveRadio.isLive(item)) return
         val alreadyPending = QualityUpgrade.isPending(mediaId)
         val shelved = QualityUpgrade.shelvedFor(mediaId)
         if (shelved == null && !alreadyPending && !QualityUpgrade.couldStillUpgrade(mediaId, uri, byHand)) return
@@ -7179,8 +7248,7 @@ class PlaybackService : MediaLibraryService() {
         // A live station starts where the broadcast is now. The position it
         // was left at is a place in a window that has since rolled on, and
         // seeking there plays nothing at all.
-        val live = items.getOrNull(last.index)?.localConfiguration?.uri
-            ?.let { LiveRadio.isLiveStream(it) } == true
+        val live = LiveRadio.isLive(items.getOrNull(last.index))
         player.setMediaItems(
             items,
             last.index,
@@ -7886,6 +7954,11 @@ class PlaybackService : MediaLibraryService() {
                 // audible one writes telemetry, so the idle player's reset
                 // cannot publish "not exact" over the playing track's verdict.
                 isAudible = { transition === activeFilter },
+                // A DRM station's decoder PCM is measured before this app's
+                // own processing touches it. The flag is owned by the service
+                // and flipped on the app thread, because the audio thread may
+                // not ask ExoPlayer what is playing.
+                radioDiagnostics = { radioDrmActive },
             )
         }
     }
@@ -9314,7 +9387,7 @@ class PlaybackService : MediaLibraryService() {
                 // a place in a track: keeping it would resume the station
                 // there on the next start, which is outside the live window
                 // and plays nothing.
-                if (LiveRadio.isLiveStream(p.currentMediaItem?.localConfiguration?.uri)) continue
+                if (LiveRadio.isLive(p.currentMediaItem)) continue
                 val dur = p.duration.takeIf { it > 0L } ?: 0L
                 com.music.bitchord.data.settings.MediaProgress.record(
                     id, p.currentPosition.coerceAtLeast(0L), dur,
@@ -9330,7 +9403,7 @@ class PlaybackService : MediaLibraryService() {
         val p = player
         val id = p?.currentMediaItem?.mediaId
         if (p != null && id != null) {
-            if (LiveRadio.isLiveStream(p.currentMediaItem?.localConfiguration?.uri)) return
+            if (LiveRadio.isLive(p.currentMediaItem)) return
             val dur = p.duration.takeIf { it > 0L } ?: 0L
             com.music.bitchord.data.settings.MediaProgress.record(
                 id, p.currentPosition.coerceAtLeast(0L), dur,
