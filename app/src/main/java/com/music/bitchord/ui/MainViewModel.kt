@@ -603,7 +603,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     UiState.Error(text(R.string.provider_apple_manifest_missing_subtitle))
                 return@launch
             }
-            com.music.bitchord.data.apple.AppleSources.home(handle)
+            com.music.bitchord.data.apple.AppleSources.browseShelves(handle)
                 .onSuccess { shelves ->
                     _appleBrowse.value = if (shelves.isEmpty()) {
                         UiState.Error(text(R.string.apple_browse_empty))

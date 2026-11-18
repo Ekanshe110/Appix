@@ -197,6 +197,73 @@ internal object AppleSources {
         }
 
     /**
+     * Apple's catalogue, as the New page browses it.
+     *
+     * Home is the listener's own things — what was played, what was made for
+     * them. New is the catalogue itself: Apple's own playlists and albums,
+     * its charts, its sessions and its mixes, and the directory of what else
+     * there is to browse.
+     *
+     * The rows come from Apple's own catalogue, so a row here is a row of
+     * Apple's, opened the way Apple's own page opens it.
+     */
+    suspend fun browseShelves(handle: Handle): Result<List<HomeShelf>> {
+        val shelves = mutableListOf<HomeShelf>()
+        // The listener's own groups, split by what they hold: Apple's own
+        // playlists and Apple's own albums.
+        AppleCatalogue.home(handle.baseUrl).getOrNull()?.shelves?.forEach { shelf ->
+            val playlists = shelf.items.filter { it.type == "playlist" }
+            if (playlists.isNotEmpty()) {
+                shelves += HomeShelf(
+                    title = shelf.title,
+                    subtitle = shelf.subtitle,
+                    items = playlists.map { it.shelfItem(handle.configId) }.filterNotNull(),
+                )
+            }
+            val albums = shelf.items.filter { it.type == "album" }
+            if (albums.isNotEmpty()) {
+                shelves += HomeShelf(
+                    title = shelf.title,
+                    subtitle = shelf.subtitle,
+                    items = albums.map { it.shelfItem(handle.configId) }.filterNotNull(),
+                )
+            }
+        }
+        // The catalogue's own rows, found the way Apple's own browse finds
+        // them: by what they are called.
+        for (title, term in _BROWSE_SHELVES) {
+            val rows = AppleCatalogue.browse(handle.baseUrl, term, "playlists", 12).getOrNull()
+                ?.playlists.orEmpty()
+            if (rows.isEmpty()) continue
+            shelves += HomeShelf(
+                title = title,
+                subtitle = "",
+                items = rows.mapNotNull { row ->
+                    ShelfItem(
+                        title = row.title,
+                        subtitle = row.artist,
+                        thumbnailUrl = row.artworkURL,
+                        videoId = null,
+                        browseId = PAGE_PREFIX + row.id,
+                    )
+                },
+            )
+        }
+        return Result.success(shelves)
+    }
+
+    /**
+     * The catalogue's own rows, and the words that find them.
+     */
+    private val _BROWSE_SHELVES = listOf(
+        "Apple Music Playlists" to "Apple Music",
+        "Charts" to "Top 100",
+        "Apple Music Sessions" to "Sessions",
+        "The Best DJ Mixes" to "DJ Mix",
+        "Now on Tour" to "Live",
+    )
+
+    /**
      * The listener's own playlists, as the rows the Library page draws.
      *
      * A playlist is opened as a page of its own tracks, and it is opened by

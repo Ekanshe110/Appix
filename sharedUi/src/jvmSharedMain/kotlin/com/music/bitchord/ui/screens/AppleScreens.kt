@@ -178,6 +178,9 @@ fun AppleBrowseScreen(
     listState: LazyListState,
     onItemClick: (ShelfItem, String) -> Unit,
     onItemLongPress: ((ShelfItem) -> Unit)? = null,
+    /** The directory of what else there is to browse, and the way into it. */
+    directory: List<Pair<String, String>> = emptyList(),
+    onBrowse: (String) -> Unit = { },
     onRetry: () -> Unit,
     refreshing: Boolean,
     onRefresh: () -> Unit,
@@ -233,6 +236,29 @@ fun AppleBrowseScreen(
                             onItemClick = onItemClick,
                             onItemLongPress = onItemLongPress,
                         )
+                    }
+                    // The directory of what else there is to browse, the way
+                    // Apple's own browse page ends.
+                    if (directory.isNotEmpty()) {
+                        item(key = "apple-browse:directory-header") {
+                            Text(
+                                text = stringResource(Res.string.more_to_explore),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.padding(
+                                    start = PAGE_GUTTER,
+                                    end = PAGE_GUTTER,
+                                    top = 20.dp,
+                                    bottom = 8.dp,
+                                ),
+                            )
+                        }
+                        itemsIndexed(
+                            directory,
+                            key = { index, row -> "apple-browse:directory:$index:${row.first}" },
+                        ) { _, row ->
+                            AppleDirectoryRow(label = row.first, onClick = { onBrowse(row.first) })
+                        }
                     }
                 }
             }
@@ -320,6 +346,28 @@ private fun AppleShelfCarousel(
             }
         }
     }
+}
+
+/**
+ * One row of the directory.
+ *
+ * A plain line of words, the way Apple's own browse page ends: the way into
+ * the rest of the catalogue.
+ */
+@Composable
+private fun AppleDirectoryRow(
+    label: String,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = PAGE_GUTTER, vertical = 13.dp),
+    )
 }
 
 /**
