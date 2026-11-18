@@ -7167,7 +7167,17 @@ class PlaybackService : MediaLibraryService() {
     private fun restoreLastQueue(player: ExoPlayer): Boolean {
         val last = LastPlayed.load() ?: return false
         persistedQueueStart = 0
-        player.setMediaItems(last.songs.map { it.toMediaItem() }, last.index, last.positionMs)
+        val items = last.songs.map { it.toMediaItem() }
+        // A live station starts where the broadcast is now. The position it
+        // was left at is a place in a window that has since rolled on, and
+        // seeking there plays nothing at all.
+        val live = items.getOrNull(last.index)?.localConfiguration?.uri
+            ?.let { LiveRadio.isLiveStream(it) } == true
+        player.setMediaItems(
+            items,
+            last.index,
+            if (live) 0L else last.positionMs,
+        )
         return true
     }
 
@@ -9292,6 +9302,11 @@ class PlaybackService : MediaLibraryService() {
                 val p = player ?: continue
                 if (!p.isPlaying) continue
                 val id = p.currentMediaItem?.mediaId ?: continue
+                // A live station's position is where the broadcast is now, not
+                // a place in a track: keeping it would resume the station
+                // there on the next start, which is outside the live window
+                // and plays nothing.
+                if (LiveRadio.isLiveStream(p.currentMediaItem?.localConfiguration?.uri)) continue
                 val dur = p.duration.takeIf { it > 0L } ?: 0L
                 com.music.bitchord.data.settings.MediaProgress.record(
                     id, p.currentPosition.coerceAtLeast(0L), dur,
@@ -9307,6 +9322,7 @@ class PlaybackService : MediaLibraryService() {
         val p = player
         val id = p?.currentMediaItem?.mediaId
         if (p != null && id != null) {
+            if (LiveRadio.isLiveStream(p.currentMediaItem?.localConfiguration?.uri)) return
             val dur = p.duration.takeIf { it > 0L } ?: 0L
             com.music.bitchord.data.settings.MediaProgress.record(
                 id, p.currentPosition.coerceAtLeast(0L), dur,
