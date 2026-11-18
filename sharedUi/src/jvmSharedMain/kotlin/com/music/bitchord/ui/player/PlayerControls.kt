@@ -269,6 +269,16 @@ internal fun PlayerScrubber(
      */
     shown: () -> Float,
     durationMs: Long,
+    /**
+     * A live station is playing.
+     *
+     * A live stream has no length: there is no position to show and nothing
+     * to seek to, so the bar is replaced by the LIVE line Apple's own player
+     * draws. Said by the caller, because only the caller knows the row is a
+     * live station — a track whose duration has not arrived yet is a track
+     * with no duration, not a broadcast.
+     */
+    liveRadio: Boolean = false,
     /** A version switch's wait, drawn along the bar — see [ThinSlider.loading]. */
     loading: Boolean,
     /** An analysed Automix handoff, drawn as a travelling sheen. */
@@ -288,7 +298,7 @@ internal fun PlayerScrubber(
     // A live stream has no length to scrub through: Apple's own player draws
     // two lines with LIVE between them instead of a bar and two times, and
     // there is nothing here to seek to either.
-    if (durationMs <= 0L) {
+    if (liveRadio) {
         LiveBar(ink = ink)
         return
     }

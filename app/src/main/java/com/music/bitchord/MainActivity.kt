@@ -6685,6 +6685,18 @@ private fun RootOverlays(
                     dismiss()
                 },
                 onCreate = { title, privacy ->
+                    if (applePicker) {
+                        // Apple's own playlist: made in Apple's library, with
+                        // the rows filed into it straight away.
+                        viewModel.createApplePlaylist(title, target) { added, failed ->
+                            showQueueNotice(
+                                when {
+                                    added > 0 -> context.getString(R.string.song_added_to_playlist)
+                                    else -> context.getString(R.string.failed)
+                                },
+                            )
+                        }
+                    } else {
                     when (target.size) {
                         1 -> viewModel.createPlaylist(title, privacy, target.first())
                         else -> viewModel.createPlaylistWithVideoIds(
@@ -6693,6 +6705,7 @@ private fun RootOverlays(
                             target.mapNotNull { it.videoId },
                             target,
                         )
+                    }
                     }
                     dismiss()
                 },

@@ -219,6 +219,16 @@ object AppleCatalogue {
         ).map { it.stations }
 
     /**
+     * Creates a playlist of the listener's own.
+     *
+     * Apple's own playlists are the ones Apple's own app creates, and they
+     * are the only ones an Apple row can be filed into: a playlist of another
+     * service holds that service's ids.
+     */
+    suspend fun createPlaylist(baseUrl: String, name: String): Result<AppleWriteResponse> =
+        postForm(baseUrl, listOf("library", "playlists"), mapOf("name" to name.trim()))
+
+    /**
      * The stations other broadcasters run, which Apple lists separately.
      *
      * They are live in the same way Apple's own are, and they come from
@@ -494,6 +504,8 @@ data class AppleRatingResponse(
 @kotlinx.serialization.Serializable
 data class AppleWriteResponse(
     @kotlinx.serialization.SerialName("ok") val ok: Boolean = false,
+    /** The id of the playlist that was just created, when one was. */
+    @kotlinx.serialization.SerialName("id") val id: String? = null,
     @kotlinx.serialization.SerialName("removed") val removed: Int = 0,
     @kotlinx.serialization.SerialName("added") val added: Int = 0,
 )

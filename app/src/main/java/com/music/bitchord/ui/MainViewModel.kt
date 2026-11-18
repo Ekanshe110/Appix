@@ -430,6 +430,52 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Creates a playlist of the listener's own and files the rows in it.
+     *
+     * Apple's own playlists, made the way Apple's own app makes them: the
+     * playlist is created first and the tracks go into it afterwards, so the
+     * listener sees one playlist at the end rather than a new empty one and a
+     * second step.
+     */
+    fun createApplePlaylist(
+        title: String,
+        songs: List<Song>,
+        onResult: (added: Int, failed: Int) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val handle = com.music.bitchord.data.apple.AppleSources.handle()
+            if (handle == null) {
+                onResult(0, songs.size)
+                return@launch
+            }
+            val created = com.music.bitchord.data.apple.AppleCatalogue
+                .createPlaylist(handle.baseUrl, title)
+                .getOrNull()
+            val playlistId = created?.id
+            if (!created?.ok == true || playlistId.isNullOrBlank()) {
+                onResult(0, songs.size)
+                return@launch
+            }
+            val ids = songs.mapNotNull { song ->
+                val parsed = com.music.bitchord.data.sources.SourceRegistry.parseTrackKey(song.videoId)
+                if (parsed != null && parsed.first == handle.configId) parsed.second else null
+            }
+            var added = 0
+            if (ids.isNotEmpty()) {
+                val written = com.music.bitchord.data.apple.AppleCatalogue
+                    .addToPlaylist(handle.baseUrl, playlistId, ids)
+                    .isSuccess
+                if (written) added = ids.size
+            }
+            // The list the picker shows is the listener's own, and it has
+            // just changed: it is read again, or the new playlist is missing
+            // from the list it was made in.
+            loadApplePlaylists()
+            onResult(added, songs.size - added)
+        }
+    }
+
+    /**
      * Apple's own stations, for the Radio page under Apple's look.
      * Apple's radio is its stations: the live ones Apple's player holds
      * under Widevine, and the seeded ones it builds from an artist, a genre
