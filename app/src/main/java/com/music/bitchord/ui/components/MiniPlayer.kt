@@ -105,7 +105,6 @@ private val GLYPH_SIZE = 32.dp
 /** The spinner that stands in for the play glyph, kept in proportion to it. */
 private val SPINNER_SIZE = 22.dp
 
-
 /**
  * The gap between the two transport controls.
  *

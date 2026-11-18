@@ -336,7 +336,7 @@ internal fun LandscapeNowPlaying(
                     },
                     scrubber = {
                         PlayerScrubber(
-                                        shown = shown,
+                            shown = shown,
                             durationMs = durationMs,
                             loading = versionAligning || audioVersionSwitching,
                             mixing = mixing() && !scrub.scrubbing,
@@ -363,7 +363,7 @@ internal fun LandscapeNowPlaying(
                         TransportRow(
                             isPlaying = isPlaying,
                             isLoading = isLoading || audioVersionSwitching,
-                                                    previousEnabled = !controlsLocked &&
+                            previousEnabled = !controlsLocked &&
                                 (hasPrevious || pastRestartPoint()),
                             nextEnabled = !controlsLocked && hasNext,
                             onPrevious = onPrevious,

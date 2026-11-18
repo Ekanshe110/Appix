@@ -478,7 +478,6 @@ private const val BAR_OPACITY = 0.81f
  */
 private const val VOLUME_BAR_OPACITY = 0.49f
 
-
 /**
  * The elapsed and remaining times, which the reference player keeps quiet.
  *
@@ -585,18 +584,11 @@ internal fun PlaybackQualityLabel(
                     .padding(horizontal = QUALITY_BADGE_TAP_PADDING),
             )
             if (renditionSwitchable) {
-                // The cue is the switch as much as the badge is: it says
-                // there is another answer to ask for, so asking for it by
-                // tapping the cue is what a finger expects to happen.
                 Text(
                     text = "›",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .clickable {
-                            switchRendition?.invoke(targetRendition)
-                        }
-                        .padding(start = 2.dp, end = QUALITY_BADGE_TAP_PADDING),
+                    modifier = Modifier.padding(start = 2.dp, end = QUALITY_BADGE_TAP_PADDING),
                 )
             }
         }
@@ -1013,6 +1005,55 @@ internal fun TransportRow(
     }
 }
 
+/** The volume bar between its two speaker glyphs. */
+@Composable
+internal fun VolumeRow(
+    /**
+     * Read inside the row, so the level's tween recomposes the row alone rather
+     * than the whole player around it.
+     */
+    value: () -> Float,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit,
+) {
+    val ink = LocalPlayerAccent.current ?: LocalPlayerInk.current.value
+    val alphas = LocalPlayerAlphas.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = PlayerIcons.VolumeLow.painter(),
+            contentDescription = null,
+            tint = ink.copy(alpha = alphas.tertiary),
+            modifier = Modifier
+                .size(VOLUME_ICON_SIZE),
+        )
+        Spacer(Modifier.width(10.dp))
+        ThinSlider(
+            value = value(),
+            onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
+            // Thinner than the seek bar, and thinner than it used to be: the
+            // volume row is a courtesy under the transport, and at the seek
+            // bar's weight it read as a second progress bar.
+            idleHeight = VOLUME_IDLE_HEIGHT,
+            activeHeight = VOLUME_ACTIVE_HEIGHT,
+            activeColor = (LocalPlayerSeekbar.current ?: ink).copy(alpha = alphas.primary * VOLUME_BAR_OPACITY),
+            inactiveColor = (LocalPlayerSeekbar.current ?: ink).copy(alpha = alphas.track),
+            markerColor = (LocalPlayerSeekbar.current ?: ink).copy(alpha = alphas.primary * VOLUME_BAR_OPACITY),
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(10.dp))
+        Icon(
+            painter = PlayerIcons.VolumeHigh.painter(),
+            contentDescription = null,
+            tint = ink.copy(alpha = alphas.tertiary),
+            modifier = Modifier
+                .size(VOLUME_ICON_SIZE),
+        )
+    }
+}
 
 /**
  * The speakers either side of the volume bar.
