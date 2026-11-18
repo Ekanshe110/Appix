@@ -7702,7 +7702,19 @@ class PlaybackService : MediaLibraryService() {
                     if (mimeType == MimeTypes.AUDIO_FLAC) {
                         candidates.filterNot { AudioOutputPolicy.isUnsafeFloatFlacDecoder(it.name) }
                     } else {
-                        candidates
+                        // The software AAC decoder comes first on Android 16.
+                        // It is the one that receives Apple's live radio too,
+                        // and on this device it accepts the crypto config and
+                        // then produces silence — an occasional hiss when a
+                        // block happens to line up. The vendor decoder is
+                        // offered the same media but is listed second; put it
+                        // first for AAC so the encrypted stream gets a decoder
+                        // that can actually carry it.
+                        if (mimeType == MimeTypes.AUDIO_AAC) {
+                            candidates.sortedByDescending { it.hardwareAccelerated }
+                        } else {
+                            candidates
+                        }
                     }
                 }
             }
