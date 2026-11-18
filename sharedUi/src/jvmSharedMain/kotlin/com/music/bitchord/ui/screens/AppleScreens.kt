@@ -138,7 +138,9 @@ fun AppleHomeScreen(
                     // the shape Apple's own page draws — one row per group,
                     // scrolled sideways, not a grid of everything at once.
                     itemsIndexed(
-                        shelves.filter { it !== hero },
+                        // Everything after the head cards: the groups the
+                        // head did not already show.
+                        shelves.filter { shelf -> heads.none { it === shelf } },
                         // The row's place is part of the key: two groups can
                         // carry the same title, and a lazy list given the
                         // same key twice crashes rather than drawing it.
