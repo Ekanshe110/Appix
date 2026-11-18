@@ -356,7 +356,7 @@ internal fun AppleRadioRow.station(): com.music.bitchord.data.model.AppleRadioRo
         artworkUrl = artworkURL,
         provider = provider,
         // A playlist opens as a page of its own; a station plays from here.
-        browseId = if (kind == "playlists") PAGE_PREFIX + id else null,
+        browseId = if (kind == "playlists") AppleSources.PAGE_PREFIX + id else null,
     )
 
 /**

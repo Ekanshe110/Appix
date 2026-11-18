@@ -5906,18 +5906,18 @@ private fun RootPage(
                         viewModel.openDetail(
                             browseId = browseId,
                             title = row.name,
-                            subtitle = row.subtitle,
+                            subtitle = row.subtitle.orEmpty(),
                             thumbnailUrl = row.artworkUrl,
                         )
                     }
                 },
-                onStationClick = { station ->
+                onStationClick = onStationClick@{ station ->
                     val browseId = station.browseId
                     if (browseId != null) {
                         viewModel.openDetail(
                             browseId = browseId,
                             title = station.name,
-                            subtitle = station.subtitle,
+                            subtitle = station.subtitle.orEmpty(),
                             thumbnailUrl = station.artworkUrl,
                         )
                         return@onStationClick

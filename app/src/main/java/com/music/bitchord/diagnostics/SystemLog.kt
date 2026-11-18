@@ -79,7 +79,7 @@ object SystemLog {
             "logcat", "-d", "-t", SYSTEM_LOG_LINES.toString(),
             "-v", "threadtime",
         )
-        runCatching { read(narrow) }
+        return runCatching { read(narrow) }
             .recoverCatching { read(wide) }
             .getOrElse { listOf("(the system's log could not be read: ${it.message})") }
     }

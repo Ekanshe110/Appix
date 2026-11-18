@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.music.bitchord.R
 import com.music.bitchord.diagnostics.SystemLog
-import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.res.stringResource
 
 /**
  * The report, shown and sent.
